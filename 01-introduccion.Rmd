@@ -1,0 +1,141 @@
+---
+title: "Introducción al análisis estadístico de redes sociales"
+author: 
+- Juan Sosa PhD
+- Webpage https://sites.google.com/view/juansosa/ 
+- YouTube https://www.youtube.com/c/JuanSosa1702 
+- GitHub  https://github.com/jstats1702 
+- Rpubs   https://rpubs.com/jstats1702
+date: ""
+output:
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Redes sociales
+
+Una **red** es una colección de objetos interconectados.
+
+Un **grafo** es una colección de objetos (vértices o nodos) unidos por enlaces (aristas o arcos), que permiten representar relaciones entre los elementos del conjunto.
+
+Una **relación** es una propiedad irreductible entre dos o más objetos, en contraste con los **atributos** de los objetos en si mismos.
+
+Los **objetos** se senominan comúnmente como actores, individuos, nodos, o vertices; mientras que las **relaciones** entre ellos como enlaces, conexiones, aristas, o arcos.
+
+Algunos ejemplos:
+
+- Redes de información (e.g., *World Wide Web*).
+- Redes de transporte (e.g., red global de aerolineas).
+- Redes sociales *on-line* (e.g., *Facebook*).
+- Redes laborales (e.g., rede de colaboración).
+- Redes biológicas (e.g., red de proteinas).
+
+Las interacciones de las partes que constituyen un sistema conducen a comportamientos colectivos y propiedades a nivel global.
+
+```{r, eval = TRUE, echo=FALSE, out.width="60%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("graph0.jpg")
+```
+
+# Objetivos
+
+Estudiar **teoría** y **metodología** para conceptualizar, almacenar, manipular, caracterizar, visualizar, modelar y realizar cálculos con redes, de manera eficiente (a menudo cantidades masivas de datos).
+
+Usar **herramientas computacionales** (e.g., R) para hacer análisis estadístico de redes (datos relacionales).
+
+# Datos relacionales
+
+Los **datos relacionales** están constituidos por una colección de **objetos**, sus **atributos**, y un conjunto de **relaciones** observadas entre ellos.
+
+La presencia de **variables diádicas** o **estructurales**, medidas sobre pares de indiviuos (díadas), es la característica distintiva de los datos relacionales.
+
+# Tipos de relaciones
+
+## No dirigidas y dirigidas
+
+Una relación **no dirigida** (simétrica) tiene uno y solo un valor por díada. Por otro lado, una relación **dirigida** (asimétrica) tiene dos valores por díada, un valor que representa la perspectiva de cada miembro de la pareja. 
+
+Se dice que una red es una **red no dirigida** si todas las relaciones en ella no están dirigidas, y se denomina **red dirigida** o **dígrafo** en caso contrario.
+
+Ejemplos de relaciones **no dirigidas**:
+
+- Amistades de una red social *on-line*.
+- Cantidad de tiempo que personas pasan juntas.
+
+```{r, eval = TRUE, echo=FALSE, out.width="40%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("undirected.jpeg")
+```
+
+Ejemplos de relaciones **dirididas**:
+
+- Amistades auto-informadas.
+- Número de correos electrónicos enviados entre compañeros de trabajo.
+
+```{r, eval = TRUE, echo=FALSE, out.width="40%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("directed.jpeg")
+```
+
+## Binarias y ponderadas
+
+Una relación **binaria** (dicotómica) únicamente asume dos valores, a saber, ausencia o presencia de la relación. Mientras que una relación **ponderada** (númerica) toma más de dos valores para caracterizar las relaciones entre las díadas.
+
+Ejemplos de relaciones **binarias**:
+
+- Presencia de un conflicto militar entre paises.
+- Presencia de una alianza estratégica entre compañías. 
+
+Ejemplos de relaciones **ponderadas**:
+
+- Número de veces que congresistas apoyan un proyecto de ley juntos.
+- Distancia geográfica entre ciudades.
+
+# Fuentes de datos
+
+- http://networkrepository.com/
+- https://sites.duke.edu/dnac/resources/datasets/
+- https://snap.stanford.edu/
+- https://github.com/awesomedata/awesome-public-datasets#socialnetworks
+- http://www-personal.umich.edu/~mejn/netdata/
+- https://linqs.soe.ucsc.edu/data
+- https://kateto.net/2016/05/network-datasets/
+
+# Otros tipos de redes
+
+## Redes Bayesianas
+            
+Las **redes Bayesianas** son una clase de **modelos gráficos** que permiten una representación de las **dependencias probabilísticas** entre un conjunto dado de variables aleatorias por medio de un *gráfico acíclico dirigido* (DAG), donde cada nodo corresponde a una variable aleatoria.
+
+```{r, eval = TRUE, echo=FALSE, out.width="33%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("bayesian_net.png")
+```
+
+Ver por ejemplo, Scutari, M., & Denis, J. B. (2021). *Bayesian networks: with examples in R*. CRC press.
+
+## Redes neuronales
+
+Una **red neuronal** es un **modelo computacional** con varias **capas de nodos** conectados, cuyo comportamiento está determnado por la forma en que se conectan los nodos así como por la ponderación de las conexiones. Usualmente se utilizan para tareas de identificación complejas, como el reconocimiento facial, la traducción de textos, y el reconocimiento de voz.
+
+```{r, eval = TRUE, echo=FALSE, out.width="50%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("neuronal_net.jpg")
+```
+
+Ver por ejemplo, Ghatak, A. (2019). *Deep learning with R*. Springer.
+
+# Referencias
+
+```{r, eval = TRUE, echo=FALSE, out.width="25%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("KCbookcover1.jpg")
+```
+
+```{r, eval = TRUE, echo=FALSE, out.width="25%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("KCbookcover2.jpg")
+```
+
+```{r, eval = TRUE, echo=FALSE, out.width="25%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("Lukebookcover.jpg")
+```

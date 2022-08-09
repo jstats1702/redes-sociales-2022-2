@@ -5,3 +5,4 @@ Materiales del curso de **Análisis Estadístico de Redes Sociales** ofreciendo 
 ## Contenido
 
 1. Introducción.
+2. Manipulación de datos relacionales.

@@ -245,6 +245,14 @@ suppressMessages(suppressWarnings(library(sand)))
 class(elist.lazega)
 head(elist.lazega)
 # atributos (ver ayuda de sand)
+# seniority
+# status (1 = partner; 2 = associate)
+# gender (1 = man; 2 = woman)
+# office (1 = Boston; 2 = Hartford; 3 = Providence)
+# years with the firm
+# age
+# practice (1 = litigation; 2 = corporate)
+# law school (1= harvard, yale = 2: ucon; 3 = other)
 class(v.attr.lazega)
 head(v.attr.lazega)
 # grafo
@@ -267,9 +275,17 @@ vertex_attr_names(g_lazega)
 ```{r, fig.height = 7, fig.width = 7, fig.align='center'}
 # grafico
 set.seed(42)
-plot(g_lazega, vertex.label = NA, vertex.size = 10, edge.color = "black")
+plot(g_lazega, vertex.label = NA, vertex.size = 6, edge.color = "black")
 title(main = "Lazega")
 ```
+
+```{r, fig.height = 7, fig.width = 7, fig.align='center'}
+# grafico
+set.seed(42)
+plot(g_lazega, vertex.label = NA, vertex.size = 6, edge.color = "black", vertex.color = c("royalblue","orangered")[v.attr.lazega$Practice])
+title(main = "Lazega")
+```
+
 
 # Conceptos fundamentales de la teoría de grafos
 
@@ -468,9 +484,9 @@ d
 V(g)$color <- "white"
 E(g)$color <- "grey"
 E(g)$width <- 1
-E(g, path = d)$color <- "red"
+V(g)[d]$color <- "royalblue"
+E(g, path = d)$color <- "royalblue"
 E(g, path = d)$width <- 2
-V(g)[d]$color <- "red"
 set.seed(42)
 plot(g, vertex.label = NA,)
 ```

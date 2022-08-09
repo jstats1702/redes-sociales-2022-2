@@ -232,11 +232,15 @@ A
 
 Red de relaciones de **trabajo colaborativo** entre miembros de una firma de abogados (SG&R). 
 
+$y_{i,j} = 1$ si los miembros de la firma $i$ y $j$ han trabajado juntos en al menos un caso, y $y_{i,j} = 0$ en otro caso.
+
 Estos datos fueron recolectados con el propósito de **estudiar la cooperación** entre los actores sociales de una organización. 
 
-Disponible en la librería `sand` de R. 
-
 ***Lazega, E. (2001). The collegial phenomenon: The social mechanisms of cooperation among peers in a corporate law partnership. Oxford University Press on Demand.***
+
+Disponible en la librería `sand` de R.
+
+https://www.stats.ox.ac.uk/~snijders/siena/Lazega_lawyers_data.htm
 
 ```{r}
 # install.packages("sand")

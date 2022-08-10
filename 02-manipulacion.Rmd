@@ -83,6 +83,8 @@ knitr::include_graphics("multigraph.png")
 suppressMessages(suppressWarnings(library(igraph)))
 # red no dirigida (definicion manual)
 g <- graph_from_literal(1-2, 1-3, 2-3, 2-4, 3-5, 4-5, 4-6, 4-7, 5-6, 6-7)
+# otra manera
+# g <- graph(edges = c(1,2, 1,3, 2,3, 2,4, 3,5, 4,5, 4,6, 4,7, 5,6, 6,7), directed = FALSE)
 # clase de objeto
 class(g)
 # identificador
@@ -108,8 +110,6 @@ is_simple(g)
 set.seed(42)
 plot(g)
 ```
-
-Ver https://igraph.org/r/doc/plot.common.html para detalles de visualización.
 
 ```{r}
 # red ponderada
@@ -174,7 +174,9 @@ La **matriz de adyacencia** $\mathbf{Y} = [y_{i,j}]$ asociada con un **grafo bin
 
 La **diagonal principal** de una matriz de adyacencia está llena de **ceros estructurales**.
 
-La matriz de adyacencia de un **grafo no dirigido** es **necesariamente simétrica**. Mientras que la matriz de adyacencia de un **grafo dirigido** es **posiblemente asimétrica**.
+La matriz de adyacencia de un **grafo no dirigido** es **necesariamente simétrica**. 
+
+La matriz de adyacencia de un **grafo dirigido** es **posiblemente asimétrica**.
 
 ```{r, fig.align='center'}
 # red no dirigida (definicion manual)
@@ -182,14 +184,6 @@ g <- graph_from_literal(1-2, 1-3, 2-3, 2-4, 3-5, 4-5, 4-6, 4-7, 5-6, 6-7)
 # visualizacion
 set.seed(42)
 plot(g)
-# vertices
-V(g)
-# orden
-vcount(g)
-# aristas
-E(g)
-# tamaño
-ecount(g)
 # matriz de adyacencia
 A <- get.adjacency(g)
 class(A)
@@ -205,25 +199,26 @@ class(y)
 length(y)
 y
 # version vectorizada indexada
-v <- which(y == 1)
-class(v)
-length(v)
-v
+yy <- which(y == 1)
+class(yy)
+length(yy)
+yy
 ```
 
 ## Matriz de aristas
 
 Una **matriz de aristas** es un **arreglo de dos columnas** conformado por todos los **pares de vértices** que están **unidos** por una arista.
 
+¿Y los **vértices aislados**?
+
 ```{r}
-# aristas
-E(g)
 # matriz de aristas
 n <- dim(Y)[1]
 A <- NULL
 for (i in 1:(n-1)) 
-  for (j in (i+1):n) if (Y[i,j] == 1) 
-    A <- rbind(A, c(i,j))
+  for (j in (i+1):n) 
+    if (Y[i,j] == 1) 
+      A <- rbind(A, c(i,j))
 class(A)
 A
 ```
@@ -238,7 +233,7 @@ Estos datos fueron recolectados con el propósito de **estudiar la cooperación*
 
 ***Lazega, E. (2001). The collegial phenomenon: The social mechanisms of cooperation among peers in a corporate law partnership. Oxford University Press on Demand.***
 
-Disponible en la librería `sand` de R.
+Disponible en el paquete `sand` de R, entre otros.
 
 https://www.stats.ox.ac.uk/~snijders/siena/Lazega_lawyers_data.htm
 
@@ -256,7 +251,7 @@ head(elist.lazega)
 # years with the firm
 # age
 # practice (1 = litigation; 2 = corporate)
-# law school (1= harvard, yale = 2: ucon; 3 = other)
+# law school (1= harvard, yale; 2 = ucon; 3 = other)
 class(v.attr.lazega)
 head(v.attr.lazega)
 # grafo
@@ -284,7 +279,7 @@ title(main = "Lazega")
 ```
 
 ```{r, fig.height = 7, fig.width = 7, fig.align='center'}
-# grafico
+# visualizacion
 set.seed(42)
 plot(g_lazega, vertex.label = NA, vertex.size = 6, edge.color = "black", vertex.color = c("royalblue","orangered")[v.attr.lazega$Practice])
 title(main = "Lazega")
@@ -366,14 +361,14 @@ degree(graph = dg, mode = "out")
 
 Una **caminata** (*walk*) de $v_0$ a $v_\ell$ es una secuencia alternante $\{v_0,e_1,v_1,e_2,v_2,\ldots,v_{\ell-1},e_\ell,v_\ell\}$ donde los puntos extremos de $e_i$ son $\{v_{i-1}, v_i\}$ para $i=1,\ldots,\ell$. Se dice que la **longitud** de esta caminata es $\ell$. Pueden haber caminatas abiertas o cerradas.
 
-- 1->2->3->4->5->3 es una caminata abierta. 
-- 1->2->3->4->5->3->1 es una caminta cerrada.
+- 1->2->3->4->3    es una caminata abierta. 
+- 1->2->3->4->3->1 es una caminata cerrada.
 
 ```{r, eval = TRUE, echo=FALSE, out.width="15%", fig.pos = 'H', fig.align = 'center'}
 knitr::include_graphics("walk.png")
 ```
 
-Un **sendero** (*trail*) es una caminata abierta en la que no se repite ninguna arista (se pueden repetir vértices).
+Un **sendero** (*trail*) es una caminata abierta sin aristas repetidas (se pueden repetir vértices).
 
 - 1->3->8->6->3->2 es un sendero. 
 
@@ -381,7 +376,7 @@ Un **sendero** (*trail*) es una caminata abierta en la que no se repite ninguna 
 knitr::include_graphics("trail.png")
 ```
 
-Un **circuito** (*circuit*) es un sendero cerrado, i.e., una caminata sin aristas repetidas para la cual los vértices inicial y final son los mismos (se pueden repetir vértices). 
+Un **circuito** (*circuit*) es una caminata cerrada sin aristas repetidas (se pueden repetir vértices). 
 
 - 1->2->4->3->6->8->3->1 es un circuito.
 
@@ -389,7 +384,7 @@ Un **circuito** (*circuit*) es un sendero cerrado, i.e., una caminata sin arista
 knitr::include_graphics("circuit.png")
 ```
 
-Un **ciclo** (*cycle*) es una caminata con longitud de al menos tres sin aristas repetidas, para la cual los vértices inicial y final son los mismos, y además todos los demás vértices son distintos.
+Un **ciclo** (*cycle*) es una caminata cerrada con al menos tres aristas no repetidas y vértices intermedios son distintos.
 
 - 1->2->4->3->1 es un ciclo. 
 
@@ -420,8 +415,6 @@ knitr::include_graphics("connectedcomponent.png")
 ```{r, fig.align='center'}
 # red no dirigida (definicion manual)
 g <- graph_from_literal(1-2, 1-3, 2-3, 2-4, 3-5, 4-5, 4-6, 4-7, 5-6, 6-7)
-# otra manera
-# g <- graph(edges = c(1,2, 1,3, 2,3, 2,4, 3,5, 4,5, 4,6, 4,7, 5,6, 6,7), directed = FALSE)
 # visualizacion
 set.seed(42)
 plot(g)

@@ -9,9 +9,9 @@ Materiales del curso de **Análisis Estadístico de Redes Sociales** ofreciendo 
 
 ## Talleres
 
-Taller 1
+- Taller 1
 
 ## Data
 
-addhealth
-conflict
+- addhealth
+- conflict

@@ -1,0 +1,63 @@
+---
+title: "Taller 1"
+author: 
+- Juan Sosa PhD
+- Webpage https://sites.google.com/view/juansosa/ 
+- YouTube https://www.youtube.com/c/JuanSosa1702 
+- GitHub  https://github.com/jstats1702 
+- Rpubs   https://rpubs.com/jstats1702
+date: ""
+output:
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+1. Considere el grafo $G=(V,E)$, con $V=\{1,2,3,4,5\}$ y $E=\{ \{1,2\}; \{1,3\}; \{2,3\}; \{2,4\}; \{2,5\}; \{3,5\}; \{4,5\} \}$. 
+    
+a. Graficar $G$.
+b. Calcular el orden, el tamaño, y el diámetro del grafo.
+c. Calcular el grado de cada vértice. 
+d. Graficar el subgrafo generado por los nodos 1, 2, 3, y 4.
+    
+
+2. Considere el digrafo $G=(V,E)$, con $V=\{1,2,3,4,5\}$ y $E=\{(1,3); (2, 3); (2, 4); (2, 5); (3, 1); (3, 5); (4, 5); (5, 4)\}$.
+    
+a. Graficar $G$.
+b. Calcular el orden, el tamaño, y el diámetro del grafo.
+c. Calcular el grado de cada vértice del grafo.
+d. Graficar el subgrafo generado por los nodos 1, 2, 3, y 4.
+
+2. Una triada es un subgrafo generado por una tripla de vértices.
+
+a. Graficar todos los posibles estados relacionales de una triada.
+b. Identificar los estados isomorfos.
+
+2. Graficar todos los grafos conectados con 4 vértices    .
+
+2. Escribir una rutina que reconstruya la matriz de adyacencia a partir de la matriz de aristas y una lista de vértices asilados (si los hay).
+
+2. Escribir una rutina que reconstruya la matriz de aristas y una lista de vértices asilados (si los hay) a partir de la matriz de adyacencia.
+
+2. Considere el conjunto de datos dado en `addhealth.RData` recopilado por *The National Longitudinal Study of Adolescent Health*, asociado con un estudio escolar sobre salud y comportamientos sociales de adolescentes de varias escuelas en los Estados Unidos. Los participantes nominaron hasta 5 niños y 5 niñas como amigos y reportaron el número de actividades extracurriculares en las que participaron juntos. El archivo `addhealth.RData` contiene una lista con dos arreglos, `X` y `E`. `X` tiene tres campos: `female` (0 = No, 1 = Sí), `race` (1 = Blanco, 2 = Negro, 3 = Hispano, 4 = Otro). `E` también tiene tres campos: `V1` (vértice de "salida") `V2` (vértice de "llegada") `activities` (número de actividades extracurriculares).
+
+a. Identificar las variables nodales.
+b. Identificar y clasificar las variables relacionales.
+b. Calcular el orden, el tamaño, y el diámetro del grafo.
+b. Graficar la red sin tener en cuenta las variables nodales.
+b. Identificar el top 5 de los nodos más propensos a emitir/recibir relaciones. 
+  
+2. Considere el conjunto de datos dado en `conflict.RData` recopilado por Mike Ward y Xun Cao del departamento de Ciencias Políticas de la Universidad de Washington, asociado con datos de conflictos entre países en los años 90. El archivo `conflict.RData` contiene una lista con tres arreglos, `X`, `Y`, y `D`. `X` tiene tres campos: `population` (población en millones), `gdp` (PIB en millones de dolares) `polity` (puntuación política, un índice de democracia). `Y` hace referencia a una matriz $\mathbf{Y}=[y_{i,j}]$ en la que $y_{i,j}$ representa el número de conflictos iniciados por el país $i$ hacia el país $j$. Finalmente, `D`es un arreglo de tres dimensiones dimensiones cuya tercera dimensión contiene indices entre cada par de países asociados con: comercio (dimensión 1), importaciones (dimensión 2), organizaciones intergubernamentales (dimensión 3), y distancia geográfica (dimensión 4).
+
+a. Identificar las variables nodales.
+b. Identificar y clasificar las variables relacionales.
+b. Calcular el orden, el tamaño, y el diámetro del grafo.
+b. Graficar la red sin tener en cuenta las variables nodales.
+b. Identificar el top 5 de los nodos más propensos a emitir/recibir relaciones de acuerdo con los conflictos. 
+
+2. Sintetizar la sección 2.4.2 (*Special Types of Graphs*, p. 24) de *Statistical Analysis Of Network Data With R* (Kolaczyk y Csárdi, 2020).

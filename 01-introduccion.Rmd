@@ -2,10 +2,11 @@
 title: "Introducción al análisis estadístico de redes sociales"
 author: 
 - Juan Sosa PhD
-- Webpage https://sites.google.com/view/juansosa/ 
-- YouTube https://www.youtube.com/c/JuanSosa1702 
+- Email   jcsosam@unal.edu.co
 - GitHub  https://github.com/jstats1702 
-- Rpubs   https://rpubs.com/jstats1702
+- Samuel Sanchez (revisión R y Python)
+- Email   ssanchezgu@unal.edu.co
+- GitHub  https://github.com/Samuel-col
 date: ""
 output:
   html_document:
@@ -26,7 +27,7 @@ Un **grafo** es una colección de objetos (vértices o nodos) unidos por enlaces
 
 Una **relación** es una propiedad irreductible entre dos o más objetos. Los **atributos** hacen referencia a las características de los objetos en si mismos.
 
-Los **objetos** se senominan comúnmente como actores, individuos, nodos, o vertices; mientras que las **relaciones** entre ellos como enlaces, conexiones, aristas, o arcos.
+Los **objetos** se se denominan comúnmente como actores, individuos, nodos, o vértices; mientras que las **relaciones** entre ellos como enlaces, conexiones, aristas, o arcos.
 
 Algunos ejemplos:
 
@@ -71,7 +72,7 @@ Ejemplos de relaciones **no dirigidas**:
 knitr::include_graphics("undirected.jpeg")
 ```
 
-Ejemplos de relaciones **dirididas**:
+Ejemplos de relaciones **dirigidas**:
 
 - Amistades auto-informadas.
 - Número de correos electrónicos enviados entre compañeros de trabajo.
@@ -107,7 +108,7 @@ Ejemplos de relaciones **ponderadas**:
 
 ## Redes neuronales
 
-Una **red neuronal** es un **modelo computacional** con varias **capas de nodos** conectados, cuyo comportamiento está determnado por la forma en que se conectan los nodos así como por la ponderación de las conexiones. Usualmente se utilizan para tareas de identificación complejas, como el reconocimiento facial, la traducción de textos, y el reconocimiento de voz.
+Una **red neuronal** es un **modelo computacional** con varias **capas de nodos** conectados, cuyo comportamiento está determinado por la forma en que se conectan los nodos así como por la ponderación de las conexiones. Usualmente se utilizan para tareas de identificación complejas, como el reconocimiento facial, la traducción de textos, y el reconocimiento de voz.
 
 ```{r, eval = TRUE, echo=FALSE, out.width="50%", fig.pos = 'H', fig.align = 'center'}
 knitr::include_graphics("neuronal_net.jpg")

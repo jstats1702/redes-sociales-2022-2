@@ -13,5 +13,5 @@ Materiales del curso de **Análisis Estadístico de Redes Sociales** ofreciendo 
 
 ## Data
 
-- addhealth
-- conflict
+- addhealth.RData
+- conflict.Rdata

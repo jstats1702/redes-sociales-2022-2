@@ -227,7 +227,7 @@ A
 
 Red de relaciones de **trabajo colaborativo** entre miembros de una firma de abogados (SG&R). 
 
-$y_{i,j} = 1$ si los miembros de la firma $i$ y $j$ han trabajado juntos en al menos un caso, y $y_{i,j} = 0$ en otro caso.
+Un enlace indica que los miembros de la firma han trabajado juntos en al menos un caso. Es decir, $y_{i,j} = 1$ si los miembros de la firma $i$ y $j$ han trabajado juntos en al menos un caso, y $y_{i,j} = 0$ en otro caso.
 
 Estos datos fueron recolectados con el propósito de **estudiar la cooperación** entre los actores sociales de una organización. 
 

@@ -1,0 +1,368 @@
+---
+title: "Visualización de datos relacionales"
+author: 
+- Juan Sosa PhD
+- Webpage https://sites.google.com/view/juansosa/ 
+- YouTube https://www.youtube.com/c/JuanSosa1702 
+- GitHub  https://github.com/jstats1702 
+- Rpubs   https://rpubs.com/jstats1702
+date: ""
+output:
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introducción
+
+Aquí se considera el problema de la **visualización de redes**. 
+
+La visualización de redes incorpora aspectos **matemáticos** y **algorítmicos** junto con **elementos estéticos**.
+
+# Elementos de visualización
+
+El objetivo consiste en **caracterizar visualmente datos relacionales** asociados con un grafo $G=(V,E)$ con vértices $V$ y aristas $E$. 
+
+La visualización de grafos consiste en **crear representaciones geométricas de grafos** utilizando **símbolos** para los vértices $v \in V$ y **curvas suaves** para las aristas $e \in E$
+
+Hay **infinitas maneras** en las que se puede representar $G$. Lo fundamental consiste en **comunicar adecuadamente la información relacional** contenida en $G$.
+
+Los grafos de tamaño no trivial deben dibujarse utilizando **métodos automatizados**.
+
+Se usan **algoritmos computacionalmente eficientes** que solucionan los **problemas de optimización** derivados de la representación automática de grafos.
+
+# Datos 
+
+## Lazega
+
+Red de **relaciones de trabajo colaborativo** entre miembros de una firma de abogados (SG&R). 
+
+Un enlace indica que los miembros de la firma han trabajado juntos en al menos un caso.
+
+***Lazega, E. (2001). The collegial phenomenon: The social mechanisms of cooperation among peers in a corporate law partnership. Oxford University Press on Demand.***
+
+Disponible en el paquete `sand` de R.
+
+https://www.stats.ox.ac.uk/~snijders/siena/Lazega_lawyers_data.htm
+
+
+```{r}
+suppressMessages(suppressWarnings(library(igraph)))
+suppressMessages(suppressWarnings(library(igraphdata)))
+suppressMessages(suppressWarnings(library(sand)))
+```
+
+```{r}
+# grafo
+lazega <- graph_from_data_frame(d = elist.lazega, directed = "F")
+# orden
+vcount(lazega)
+# tamaño
+ecount(lazega)
+# dirigida?
+is_directed(lazega)
+```
+
+## Blogs de SIDA
+
+Red de **blogs asociados con el SIDA** asociados con los pacientes y sus redes de apoyo. 
+
+Un enlace dirigido de un blog a otro indica que el primero tiene un enlace al segundo en su página web. 
+
+***Miller, H. J. (2007). Societies and cities in the age of instant access. In Societies and cities in the age of instant access (pp. 3-28). Springer, Dordrecht.***
+
+Disponible en el paquete `sand` de R.
+
+https://rdrr.io/cran/sand/man/aidsblog.html
+
+```{r}
+# datos
+data(aidsblog)
+# orden
+vcount(aidsblog)
+# tamaño
+ecount(aidsblog)
+# dirigida?
+is_directed(aidsblog)
+```
+
+## Blogs de política
+
+Red de **blogs políticos franceses** clasificados por el proyecto ***Observatoire Presidentielle*** en relación con su afiliación política. 
+
+Un enlace indica que al menos uno de los dos blogs hace referencia al otro en su página web. 
+
+Disponible en el paquete `sand` de R.
+
+http://observatoire-presidentielle.fr/
+
+https://search.r-project.org/CRAN/refmans/sand/html/fblog.html
+
+```{r}
+# datos
+data(fblog)
+# orden
+vcount(fblog)
+# tamaño
+ecount(fblog)
+# dirigida?
+is_directed(fblog)
+```
+
+## Caltech
+
+Red de una muestra de **usuarios de Facebook** asociados con estudiantes de Caltech.
+
+Los enlaces representan amistades entre los usuarios.
+
+***Red, V., Kelsic, E. D., Mucha, P. J., & Porter, M. A. (2011). Comparing community structure to characteristics in online collegiate social networks. SIAM review, 53(3), 526-543.***
+
+Disponible en https://networkrepository.com/socfb-Caltech36.php
+
+```{r}
+# datos
+setwd("C:/Users/Juan Camilo/Dropbox/UN/networks")
+dat <- read.table("caltech.txt", quote="\"", comment.char="")
+head(dat)
+caltech  <- graph_from_data_frame(d = dat, directed = "F") 
+# orden
+vcount(caltech)
+# tamaño
+ecount(caltech)
+# dirigida?
+is_directed(caltech)
+```
+
+
+# Algunos diseños
+
+Uno de los temas centrales de la visualización de grafos es el **diseño del grafo** (*graph layout*), i.e., la **ubicación** de los **vértices** y las **aristas** en el **espacio**, típicamente **bidimensional**.
+
+Hay disponibles demasiadas formas de diseño, entre ellas:
+
+- `layout_as_bipartite()`.
+- `layout_as_star()`.
+- `layout_as_tree()`. 
+- `layout_in_circle()`.
+- `layout_nicely()`.
+- `layout_on_grid()`.
+- `layout_on_sphere()`. 
+- `layout_randomly()`.
+- `layout_with_dh()`.
+- `layout_with_fr()`.
+- `layout_with_gem()`.
+- `layout_with_graphopt()`.
+- `layout_with_kk()`.
+- `layout_with_lgl()`.
+- `layout_with_mds()`.
+- `layout_with_sugiyama()`.
+
+## Circular
+
+https://igraph.org/r/doc/layout_in_circle.html
+
+```{r, fig.height = 6, fig.width = 12}
+igraph_options(vertex.label = NA, edge.arrow.size = 0.5, vertex.color = 1, vertex.frame.color = "black")
+par(mfrow = c(1,2))
+plot(lazega, layout = layout_in_circle, vertex.size = 6)
+title(main = "Lazega")
+plot(aidsblog, layout = layout_in_circle, vertex.size = 3)
+title(main = "Blogs de SIDA")
+```
+
+##  Diseño del algoritmo de Fruchterman y Reingold
+
+***Fruchterman, T.M.J. and Reingold, E.M. (1991). Graph Drawing by Force-directed Placement. Software - Practice and Experience, 21(11):1129-1164.***
+
+https://igraph.org/r/doc/layout_with_fr.html
+
+```{r, fig.height = 6, fig.width = 12}
+igraph_options(vertex.label = NA, edge.arrow.size = 0.5, vertex.color = 1, vertex.frame.color = "black")
+par(mfrow = c(1,2))
+plot(lazega, layout = layout_with_fr, vertex.size = 6)
+title(main = "Lazega")
+plot(aidsblog, layout = layout_with_fr, vertex.size = 4)
+title(main = "Blogs de SIDA")
+```
+
+## Algoritmo de Kamada-Kawai 
+
+***Fruchterman, T.M.J. and Reingold, E.M. (1991). Graph Drawing by Force-directed Placement. Software - Practice and Experience, 21(11):1129-1164.***
+
+https://igraph.org/r/doc/layout_with_fr.html
+
+```{r, fig.height = 5, fig.width = 10}
+igraph_options(vertex.label = NA, edge.arrow.size = 0.5, vertex.color = 1, vertex.frame.color = "black")
+par(mfrow = c(1,2))
+plot(lazega, layout = layout_with_kk, vertex.size = 6)
+title(main = "Lazega")
+plot(aidsblog, layout = layout_with_kk, vertex.size = 4)
+title(main = "Blogs de SIDA")
+```
+
+## Algoritmo de Davidson-Harel
+
+***Ron Davidson, David Harel: Drawing Graphs Nicely Using Simulated Annealing. ACM Transactions on Graphics 15(4), pp. 301-331, 1996.***
+
+https://igraph.org/r/doc/layout_with_dh.html
+
+```{r, fig.height = 6, fig.width = 12}
+igraph_options(vertex.label = NA, edge.arrow.size = 0.5, vertex.color = 1, vertex.frame.color = "black")
+par(mfrow = c(1,2))
+plot(lazega, layout = layout_with_dh, vertex.size = 6)
+title(main = "Lazega")
+plot(aidsblog, layout = layout_with_dh, vertex.size = 4)
+title(main = "Blogs de SIDA")
+```
+
+## DrL
+
+***Martin, S., Brown, W.M., Klavans, R., Boyack, K.W., DrL: Distributed Recursive (Graph) Layout. SAND Reports, 2008. 2936: p. 1-10.***
+
+https://igraph.org/r/doc/layout_with_drl.html
+
+```{r, fig.height = 7, fig.width = 7}
+igraph_options(vertex.label = NA, vertex.color = 1, vertex.frame.color = "black")
+set.seed(42)
+plot(caltech, layout = layout_with_drl, vertex.size = 4, edge.color = "gray80")
+title(main = "Caltech")
+```
+
+## Decoración
+
+Si bien la posición de los vértices y la ubicación de las aristas es claramente importante en la visualización de grafos, la **información adicional se puede incorporar en las visualizaciones** variando características como el **tamaño**, la **forma** y el **color** de los **vértices** y las **aristas**.
+
+## Ejemplo: Lazega
+
+```{r, fig.height = 7, fig.width = 7}
+# data
+data(lazega)
+# color: ubicacion de la oficina
+v.colors <- c("red","dodgerblue","goldenrod")[V(lazega)$Office]
+# forma del vertice: tipo de practica 
+v.shapes <- c("circle","square")[V(lazega)$Practice]
+# tamaño del vertice: proporcional a años de servicio
+v.size <- 3.5*sqrt(V(lazega)$Years)
+# etiquetas
+v.label <- V(lazega)$Seniority
+# diseño
+set.seed(42)
+l <- layout_with_fr(lazega)
+head(l)
+# grafico
+plot(lazega, layout = l, vertex.color = v.colors, vertex.shape = v.shapes, vertex.size = v.size, vertex.label = v.label, edge.color = "gray50", vertex.frame.color = "black", vertex.label.color = "black")
+title(main = "Lazega")
+```
+
+## Ejemplo: Zachary
+
+Los nodos representan a los **miembros de un club de karate** observado durante un periodo de 2 años.
+
+Los enlaces indican interacciones sociales entre los miembros del club. 
+
+Este conjunto de datos es importante desde un punto de vista científico, dada la fragmentación que sufrió el club en dos clubes diferentes debido a una disputa entre el director y el administrador.
+
+***Zachary, W. W. (1977). An information flow model for conflict and fission in small groups. Journal of anthropological research, 33(4), 452-473.***
+
+Disponible en el paquete `igraphdata` de R.
+
+https://rdrr.io/cran/igraphdata/man/karate.html
+
+https://github.com/igraph/igraphdata
+
+```{r, fig.height = 6, fig.width = 12}
+# data
+data(karate)
+# orden
+vcount(karate)
+# tamaño
+ecount(karate)
+# dirigida?
+is_directed(karate)
+# diseño
+set.seed(42)
+l <- layout_with_kk(karate)
+par(mfrow = c(1,2))
+# grafico (no decorado)
+plot(karate, layout = l, vertex.label = V(karate), vertex.size = 12, vertex.color = NA, edge.color = "gray50", vertex.frame.color = "black", vertex.label.color = "black")
+title(main = "Zachary")
+# decorar grafico
+# etiquetas
+V(karate)$label <- sub("Actor ", "", V(karate)$name)
+# forma del vertice
+V(karate)$shape <- "circle"
+V(karate)[c("Mr Hi","John A")]$shape <- "rectangle"
+# color del vertice
+V(karate)[Faction == 1]$color <- "red"
+V(karate)[Faction == 2]$color <- "dodgerblue"
+# tamaño vertice
+V(karate)$size <- 4*sqrt(strength(karate))
+# grosor de aristas
+# strength: peso total de las aristas incidentes: E(karate)$weight
+E(karate)$width <- E(karate)$weight
+# color de aristas
+F1 <- V(karate)[Faction == 1]
+F2 <- V(karate)[Faction == 2]
+E(karate)[F1 %--% F1]$color <- "pink"
+E(karate)[F2 %--% F2]$color <- "lightblue"
+E(karate)[F1 %--% F2]$color <- "yellow"
+# posicion etiquetas (default = 0)
+V(karate)$label.dist <- ifelse(V(karate)$size >= 9.0, 0, 1.0)
+# grafico (decorado)
+plot(karate, layout = l, vertex.frame.color = "black", vertex.label.color = "black")
+title(main = "Zachary")
+```
+
+```{r, fig.height = 6, fig.width = 12}
+# egonetworks
+k.nbhds <- make_ego_graph(graph = karate, order = 1)
+k.1  <- k.nbhds[[1]]
+k.34 <- k.nbhds[[34]]
+# grafico
+par(mfrow = c(1,2))
+plot(k.1, vertex.label = NA, vertex.frame.color = "black", vertex.color = c("red", rep("lightblue", 16)))
+title(main = "Ego-network actor 1")
+plot(k.34, vertex.label = NA, vertex.frame.color = "black", vertex.color = c(rep("lightblue", 17), "red"))
+title(main = "Ego-network actor 34")
+```
+
+
+## Ejemplo: Blogs de política
+
+```{r, fig.height = 6, fig.width = 12}
+par(mfrow = c(1,2))
+# color de vertices
+cols <- RColorBrewer::brewer.pal(n = 9, name = "Set1")
+party.nums <- as.numeric(as.factor(V(fblog)$PolParty))
+V(fblog)$color <- cols[party.nums]
+# grafico con Kamada-Kawai 
+set.seed(42)
+plot(fblog, layout = layout_with_kk(fblog), vertex.label=NA, vertex.size = 5, vertex.frame.color = "black")
+title(main = "Blogs de política")
+# grafico con DrL
+set.seed(42)
+plot(fblog, layout = layout_with_drl(fblog), vertex.label = NA, vertex.size = 5, vertex.frame.color = "black")
+title(main = "Blogs de política")
+```
+
+```{r, fig.height = 7, fig.width = 7}
+# contraccion
+party.nums <- as.numeric(as.factor(V(fblog)$PolParty))
+fblog.c <- contract(graph = fblog, mapping = party.nums)
+E(fblog.c)$weight <- 1
+fblog.c <- simplify(fblog.c)
+# grafico
+party.names <- sort(unique(V(fblog)$PolParty))
+party.names[c(2,4,5)] <- c("Analystes"," Liberaux"," Gauche")
+party.size <- as.vector(table(V(fblog)$PolParty))
+igraph_options(vertex.frame.color = "black")
+set.seed(42)
+plot(fblog.c, vertex.size = 5*sqrt(party.size), vertex.label = party.names, vertex.color = cols, vertex.label.color = "black", vertex.frame.color = "black", edge.width = sqrt(E(fblog.c)$weight), vertex.label.dist = 0)
+title(main = "Blogs de política")
+```
+

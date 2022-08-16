@@ -15,4 +15,4 @@ Materiales del curso de **Análisis Estadístico de Redes Sociales** ofreciendo 
 
 - addhealth.RData
 - conflict.Rdata
-- Caltech.txt
+- caltech.txt

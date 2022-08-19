@@ -424,7 +424,7 @@ is_connected(g)
 clusters(g)
 ```
 
-Un dígrafo está **conectado débilmente** si el grafo subyacente no dirido (resultado de remover la direccionalidad) está conectado, y se llama **conectado fuertemente** si cada vértice es accesible desde todos los demás mediante una caminata dirigida.
+Un dígrafo está **conectado débilmente** si el grafo subyacente no dirigido (resultado de remover la direccionalidad) está conectado, y se llama **conectado fuertemente** si cada vértice es accesible desde todos los demás mediante una caminata dirigida.
 
 ```{r, fig.align='center'}
 # red dirigida (definicion manual)

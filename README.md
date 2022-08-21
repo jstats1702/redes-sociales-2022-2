@@ -6,13 +6,17 @@ Materiales del curso de **Análisis Estadístico de Redes Sociales** ofreciendo 
 
 1. Introducción.
 2. Manipulación de datos relacionales.
+3. Visualización de datos relacionales.
+4. Caracterización de vértices.
 
 ## Talleres
 
 - Taller 1.
+- Taller 2.
 
 ## Data
 
 - addhealth.RData
 - conflict.Rdata
 - caltech.txt
+- comtrade.RData

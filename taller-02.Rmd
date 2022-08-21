@@ -1,5 +1,5 @@
 ---
-title: "Taller # 2"
+title: "Taller 2"
 author: 
 - Juan Sosa PhD
 - Webpage https://sites.google.com/view/juansosa/ 

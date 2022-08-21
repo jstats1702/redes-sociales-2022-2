@@ -4,7 +4,7 @@ author:
 - Juan Sosa PhD
 - Email   jcsosam@unal.edu.co
 - GitHub  https://github.com/jstats1702 
-- Samuel Sanchez (revisión R y Python)
+- Samuel Sánchez (revisión R y Python)
 - Email   ssanchezgu@unal.edu.co
 - GitHub  https://github.com/Samuel-col
 date: ""

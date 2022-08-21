@@ -503,4 +503,9 @@ names(senderos) = 1:length(senderos)
 barplot(prop.table(senderos), xlab = "Distancia", ylab = "F. Relativa", border = "grey", col = "grey")
 ```
 
+# Referencias
+
+```{r, eval = TRUE, echo=FALSE, out.width="25%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("KCbookcover1.jpg")
+```
 

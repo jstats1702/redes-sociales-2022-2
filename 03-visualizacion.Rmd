@@ -284,6 +284,8 @@ vcount(karate)
 ecount(karate)
 # dirigida?
 is_directed(karate)
+# ponderada?
+is_weighted(karate)
 # diseño
 set.seed(42)
 l <- layout_with_kk(karate)
@@ -303,7 +305,6 @@ V(karate)[Faction == 2]$color <- "dodgerblue"
 # tamaño vertice
 V(karate)$size <- 4*sqrt(strength(karate))
 # grosor de aristas
-# strength: peso total de las aristas incidentes: E(karate)$weight
 E(karate)$width <- E(karate)$weight
 # color de aristas
 F1 <- V(karate)[Faction == 1]
@@ -366,3 +367,8 @@ plot(fblog.c, vertex.size = 5*sqrt(party.size), vertex.label = party.names, vert
 title(main = "Blogs de política")
 ```
 
+# Referencias
+
+```{r, eval = TRUE, echo=FALSE, out.width="25%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("KCbookcover1.jpg")
+```

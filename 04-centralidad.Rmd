@@ -1,0 +1,428 @@
+---
+title: "Caracterización de vértices"
+author: 
+- Juan Sosa PhD
+- Webpage https://sites.google.com/view/juansosa/ 
+- YouTube https://www.youtube.com/c/JuanSosa1702 
+- GitHub  https://github.com/jstats1702 
+- Rpubs   https://rpubs.com/jstats1702
+date: ""
+output:
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introducción
+
+Caracterizar los aspectos fundamentales de la **estructura social**:
+
+- **Importancia de individuos**.
+- Dinámicas sociales.
+- Movimiento o flujo de la información.
+- Formación de comunidades.
+
+
+# Grado
+
+Considere el grafo $G=(V,E)$. 
+
+El **grado** (*degree*) $d_v$ de un vértice $v\in V$ se define como $d_v = |\left\{\{v,u\}\in E:u\in V \right\}|$, i.e., $d_v$ corresponde al número de aristas indicentes en $v$. 
+
+A partir de la **matriz de adyacencia** $\mathbf{Y}=[y_{i,j}]$ se tiene que el grado del nodo $i$ es
+$$
+d_i = \sum_{i:i\neq j} y_{i,j} = \sum_{j:j \neq i} y_{i,j}
+$$
+para $i=1,\ldots,n$.
+
+El grado de un vértice es la combinación de la **sociabilidad** y la **popularidad**.
+
+¿Cómo se adaptan estos conceptos para los **digrafos**?
+
+Se define $f_d$ de un número entero no negativo $d\in\mathbb{Z}_0^+$ como 
+$$
+f_d = \frac{|\{v\in V:d_v = d\}|}{|V|}\,,
+$$
+i.e., la fracción de vértices en $V$ tales que $d_v=d$. 
+
+La colección $\{ f_0, f_1,\ldots \}$ se denomina **distribución del grado** (*degree distribución*) de $G$.
+
+
+# Fuerza
+
+En redes ponderadas, la **fuerza** (*strength*) $s_v$ de un vértice $v\in V$ se define como 
+$$
+s_v = \sum_{u\in V:\{v,u\}\in E} w_{\{v,u\}}\,,
+$$
+i.e., la suma de los pesos de las aristas incidentes en $v$. 
+
+La **distribución de fuerza** (*strength distribution*) se define de manera análoga.
+
+
+# Ejemplo: Zachary
+
+Los nodos representan a los **miembros de un club de karate** observado durante un periodo de 2 años.
+
+Los enlaces indican interacciones sociales entre los miembros del club. 
+
+Este conjunto de datos es importante desde un punto de vista científico, dada la fragmentación que sufrió el club en dos clubes diferentes debido a una disputa entre el director y el administrador.
+
+***Zachary, W. W. (1977). An information flow model for conflict and fission in small groups. Journal of anthropological research, 33(4), 452-473.***
+
+Disponible en el paquete `igraphdata` de R.
+
+https://rdrr.io/cran/igraphdata/man/karate.html
+
+https://github.com/igraph/igraphdata
+
+
+```{r, fig.height = 6, fig.width = 12}
+# paquetes
+suppressMessages(suppressWarnings(library(igraph)))
+suppressMessages(suppressWarnings(library(igraphdata)))
+suppressMessages(suppressWarnings(library(sand)))
+# datos
+data(karate)
+# visualizacion
+par(mfrow = c(1,2))
+set.seed(42)
+plot(karate, layout = layout_with_fr(karate), vertex.size = 12, vertex.frame.color = "black", vertex.label.color = "black")
+set.seed(42)
+plot(karate, layout = layout_with_kk(karate), vertex.size = 12, vertex.frame.color = "black", vertex.label.color = "black")
+title(main = "Zachary", outer = T, line = -1)
+```
+
+
+```{r}
+# datos
+data(karate)
+# orden
+vcount(karate)
+# tamaño
+ecount(karate)
+# dirigida?
+is_directed(karate)
+# ponderada?
+is_weighted(karate)
+# orden 
+n <- vcount(karate)
+# grado
+d <- degree(graph = karate)
+print(d)
+```
+
+
+```{r}
+# matriz de adyacencia
+Y <- as_adjacency_matrix(karate, sparse = F)
+class(Y)
+isSymmetric(Y)
+dim(Y)
+# grado
+head(
+  cbind(
+    degree(graph = karate),
+    apply(X = Y, MARGIN = 1, FUN = sum),
+    apply(X = Y, MARGIN = 2, FUN = sum)
+  )
+)
+```
+
+
+```{r, fig.height = 6, fig.width = 12}
+# grafico
+par(mfrow = c(1,2))
+plot(table(factor(d, levels = 0:n))/n, type = "h", lwd = 5, ylim = c(0,0.5), xlab = "Grado", ylab = "Densidad", main = "", xaxt = "n", col = "gray50")
+axis(side = 1, at = seq(from = 0, to = 35, by = 5))
+plot(NA, NA, type = "n", xlim = c(0,35), ylim = c(0,0.5), xlab = "Grado", ylab = "Densidad", main = "")
+hist(d, freq = F, col = "gray90", border = "gray50", add = T)
+title(main = "Distribución del grado", outer = T, line = -2)
+```
+
+
+```{r, fig.height = 6, fig.width = 6}
+# fuerza
+wd <- strength(karate)
+wd
+# grafico
+plot(NA, NA, type = "n", xlim = c(0,50), ylim = c(0,0.1), xlab = "Fuerza", ylab = "Densidad", main = "Distribución de fuerza")
+hist(wd, freq = F, col = "gray90", border = "gray50", add = T)
+```
+
+Hay tres grupos distintos de vértices. Los dos vértices más conectados corresponden a los actores 1 y 34, que representan al instructor y al administrador sobre quienes finalmente se dividió el club. El siguiente conjunto de vértices consta de los actores 2, 3, y 33, que son los más cercanos a los actores 1 y 34.
+
+## Ejemplo: Yeast
+
+Las interacciones proteína-proteína prometen revelar aspectos del sistema regulatorio que subyace a la función celular.
+
+Los nodos corresponden a proteínas y solo se consideran aquellas interacciones que tienen una confianza "moderada" y "alta". 
+
+***Von Mering, C., Krause, R., Snel, B., Cornell, M., Oliver, S. G., Fields, S., & Bork, P. (2002). Comparative assessment of large-scale data sets of protein–protein interactions. Nature, 417(6887), 399-403.***
+
+Disponible en el paquete `igraphdata` de R.
+
+http://www.nature.com/nature/journal/v417/n6887/suppinfo/nature750.html
+
+https://github.com/igraph/igraphdata
+
+
+```{r, eval = TRUE, echo=FALSE, out.width="47%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("yeastplot.png")
+```
+
+
+```{r, fig.height = 6, fig.width = 12}
+# datos
+data(yeast)
+# orden
+vcount(yeast)
+# tamaño
+ecount(yeast)
+# dirigida?
+is_directed(yeast)
+# ponderada?
+is_weighted(yeast)
+# grado
+d <- degree(yeast)
+head(x = sort(d, decreasing = T), n = 10)
+# distribucion de grado
+dd <- degree_distribution(yeast)
+# grafico
+par(mfrow = c(1,2))
+plot(NA, NA, type = "n", xlim = c(0,120), ylim = c(0,0.08), xlab = "Grado", ylab = "Densidad", main = "Distribución de grado")
+hist(d, freq = F, col = "lightskyblue", border = "royalblue", add = T)
+plot((0:max(d))[dd != 0], dd[dd != 0], log = "xy", pch = 16, col = "royalblue", xlab = "Log-grado", ylab = "Log-densidad", main = "Distribución de grado (log-log)")
+```
+
+
+Hay una porción importante de vértices de grado bajo, pero también hay una fracción no trivial de vértices con grados altos.
+
+Hay un decaimiento aproximadamente lineal en la frecuencia logarítmica en función del grado logarítmico. 
+
+Si bien es posible resumir la tasa de esta disminución usando regresión lineal simple, son preferibles métodos más sofisticados.
+
+La **distribución de la ley de potencias** (*power law distribution*) señala que la distribución del grado $d$ es de la forma
+$$
+f_d = a\,d^{-b}\,,\qquad a>0\,,\qquad b>0\,
+$$
+lo que en escala log corresponde a
+$$
+\log f_d = \log a - b\log d\,.
+$$
+$a$ se denomina constante de normalización y $b$ exponente de la ley de potencias.
+
+Las redes que satisfacen este tipo de distribución del grado se denominan **libres de escala** (*scale free*).
+
+
+```{r, fig.height = 6, fig.width = 6}
+# grado promedio de los vecinos (GPV) mas cercados (orden 1)
+mnd <- knn(graph = yeast, vids = V(yeast))$knn
+mnd[1]
+mean(d[as.numeric(neighbors(graph = yeast, v = 1))])
+# grado y GPV
+plot(d, mnd, log = "xy", pch = 16, col = "yellow3", xlab = "Log-grado", ylab = "Log-grado promedio de los vecinos")
+```
+
+Los vértices de grados superiores tienden a vincularse con vértices similares en este sentido. 
+
+Mientras que los vértices de grados inferiores tienden a relacionarse tanto con vértices de grados inferiores como superiores.
+
+
+# Centralidad
+
+Las medidas de centralidad están diseñadas para **cuantificar la "importancia" de los nodos** de una red.
+
+- Centralidad de grado.
+- Centralidad de cercanía (*closeness centrality*).
+- Centralidad de intermediación (*betweenness centrality*).
+- Centralidad propia (*eigenvector centrality*).
+
+Existen versiones **normalizadas** de todas las medidas para facilitar la comparación entre grafos y otras medidas. La normalización se logra multiplicando por una constante apropiada.
+
+Existen versiones para **redes dirigidas** y **ponderadas**   .
+
+## Centralidad de cercanía
+
+Un vértice se considera "importante" si está "cerca" de muchos otros vértices:
+$$
+c_{\textsf{C}}(v) = \frac{1}{\sum_{u\in V} \textsf{d}(v,u)}
+$$
+donde $\textsf{d}(v,u)$ es la distancia geodésica entre los vértices $u$ y $v$ de $V$.
+
+
+## Ejemplo: Zachary
+
+```{r}
+# distancias
+D <- distances(graph = karate)
+class(D)
+isSymmetric(D)
+dim(D)
+# closeness centraliy no normalizada
+head(
+  cbind(
+    closeness(graph = karate, normalized = F),  
+    1/apply(X = D, MARGIN = 1, FUN = sum),
+    1/apply(X = D, MARGIN = 2, FUN = sum)
+  )
+)
+# closeness centraliy normalizada
+n <- vcount(karate)
+head(
+  cbind(
+    closeness(graph = karate, normalized = T),  
+    (n - 1)/apply(X = D, MARGIN = 1, FUN = sum),
+    (n - 1)/apply(X = D, MARGIN = 2, FUN = sum)
+  )
+)
+# top 5
+cc <- closeness(graph = karate, normalized = T)
+head(x = cc[order(cc, decreasing = T)], n = 5)
+```
+
+## Centralidad de intermediación
+
+Un vértice se considera "importante" si se encuentra "entre" otros pares de vértices. 
+
+Los vértices que se encuentran en muchos caminos son más críticos para el proceso de comunicación:
+$$
+c_{\textsf{B}}(v) = \sum_{s,t\in V:s\neq t\neq v} \frac{\sigma(s,t\mid v)}{\sigma(s,t)}
+$$
+donde $\sigma(s,t\mid v)$ es el número total de caminos más cortos entre $s$ y $t$ que pasan por $v$, y $\sigma(s,t)$ es el número total de caminos más cortos entre $s$ y $t$ (independientemente de si pasan por $v$ o no).
+
+
+## Ejemplo: Zachary
+
+```{r}
+# betweenness centraliy no normalizada
+head(x = betweenness(graph = karate, normalized = F), n = 5)
+# betweenness centrality normalizada
+n <- vcount(karate)
+head(
+  cbind(
+    betweenness(graph = karate, normalized = F)/((n-1)*(n-2)/2),
+    betweenness(graph = karate, normalized = T)
+  )
+)
+# top 5
+bc <- betweenness(graph = karate, normalized = T)
+head(x = bc[order(bc, decreasing = T)], n = 5)
+```
+
+
+## Centralidad propia
+
+Un vértice se considera "importante" si sus vecinos son a su vez "centrales": 
+$$
+c_{\textsf{E}}(v) = \alpha\sum_{\{u,v\}\in E} c(u)
+$$
+donde $\mathbf{c}=(c(1),\ldots,c(n))$ es una solución al problema de vectores propios dado por $\mathbf{Y}\mathbf{c}=\alpha^{-1}\mathbf{c}$, con $\mathbf{Y}$ la matriz de adyacencia, $\alpha^{-1}$ es el valor propio más grande de $\mathbf{Y}$, y $\mathbf{c}$ es el vector propio correspondiente. 
+
+La convención es reportar los valores absolutos de las entradas de $\mathbf{c}$.
+
+
+## Ejemplo: Zachary
+
+```{r}
+# matriz de adyacencia
+Y <- as_adjacency_matrix(karate, sparse = F)
+class(Y)
+isSymmetric(Y)
+dim(Y)
+```
+
+```{r}
+g <- graph_from_adjacency_matrix(Y)
+evd <- eigen(Y)
+# eigen centraliy no normalizada
+head(
+  cbind(
+    eigen_centrality(graph = karate, scale = F)$vector,
+    eigen_centrality(graph = g, scale = F)$vector,
+    Y%*%c(1/evd$values[1]*evd$vectors[,1])
+  )
+)
+# eigen centraliy normalizada
+head(
+  cbind(
+    eigen_centrality(graph = karate, scale = T)$vector,
+    eigen_centrality(graph = g, scale = T)$vector,
+    Y%*%c(1/evd$values[1]*evd$vectors[,1])/max(Y%*%c(1/evd$values[1]*evd$vectors[,1]))
+  )
+)
+# top 5
+ec <- eigen_centrality(graph = karate, scale = T)$vector
+head(x = ec[order(ec, decreasing = T)], n = 5)
+```
+
+## Ejemplo: Zachary
+
+```{r, fig.height = 12, fig.width = 12}
+# medidas de centralidad
+dc <- degree          (graph = karate, normalized = T)
+cc <- closeness       (graph = karate, normalized = T)
+bc <- betweenness     (graph = karate, normalized = T)
+ec <- eigen_centrality(graph = karate, scale = T)$vector
+# visualizacion
+par(mfrow = c(2,2))
+set.seed(42)
+l <- layout_with_fr(karate)
+plot(karate, layout = l, vertex.size = 15*sqrt(dc), vertex.frame.color = "black", vertex.label = NA, main = "Grado")
+plot(karate, layout = l, vertex.size = 15*sqrt(cc), vertex.frame.color = "black", vertex.label = NA, main = "Cercania")
+plot(karate, layout = l, vertex.size = 15*sqrt(bc), vertex.frame.color = "black", vertex.label = NA, main = "Intermediación")
+plot(karate, layout = l, vertex.size = 15*sqrt(ec), vertex.frame.color = "black", vertex.label = NA, main = "Propia")
+```
+
+
+
+## Blogs de SIDA
+
+Red de **blogs asociados con el SIDA** asociados con los pacientes y sus redes de apoyo. 
+
+Un enlace dirigido de un blog a otro indica que el primero tiene un enlace al segundo en su página web. 
+
+***Miller, H. J. (2007). Societies and cities in the age of instant access. In Societies and cities in the age of instant access (pp. 3-28). Springer, Dordrecht.***
+
+Disponible en el paquete `sand` de R.
+
+https://rdrr.io/cran/sand/man/aidsblog.html
+
+```{r}
+# data
+data(aidsblog)
+# orden
+vcount(aidsblog)
+# tamaño
+ecount(aidsblog)
+# dirigida?
+is_directed(aidsblog)
+# ponderada?
+is_weighted(aidsblog)
+```
+
+Para digrafos, los **vértices de centro** (*hubs*) son "importantes" por la cantidad de vértices "centrales" a los que señalan. Mientras que los **vértices de autoridad** (*authorities*) son "importantes" por la cantidad de vértices "centrales" que los señalan. 
+
+Específicamente, dada una matriz de adyacencia $\mathbf{Y}$ de una red dirigida, estas medidas se calculan por medio de la **centralidad propia** que se obtienen de las matrices $\mathbf{M}_{\textsf{H}}=\mathbf{Y}\mathbf{Y}^{\textsf{T}}$ y $\mathbf{M}_{\textsf{A}}=\mathbf{Y}^{\textsf{T}}\mathbf{Y}$, respectivamente. 
+
+```{r, fig.height = 6, fig.width = 12}
+# centros y autoridades
+hs <- igraph::hub_score(graph = aidsblog, scale = T)$vector
+as <- igraph::authority_score(graph = aidsblog, scale = T)$vector
+set.seed(42)
+l <- layout_with_kk(aidsblog)
+par(mfrow = c(1,2))
+plot(aidsblog, layout = l, vertex.label = NA, vertex.size=15*sqrt(hs), main = "Centros")
+plot(aidsblog, layout = l, vertex.label = NA, vertex.size=15*sqrt(as), main = "Autoridades")
+```
+
+# Referencias
+
+```{r, eval = TRUE, echo=FALSE, out.width="25%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("KCbookcover1.jpg")
+```
+

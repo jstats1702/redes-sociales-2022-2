@@ -33,18 +33,20 @@ b. Calcular el orden, el tamaño, y el diámetro del grafo.
 c. Calcular el grado de cada vértice del grafo.
 d. Graficar el subgrafo generado por los nodos 1, 2, 3, y 4.
 
-2. Una triada es un subgrafo generado por una tripla de vértices.
+3. Una triada es un subgrafo generado por una tripla de vértices.
 
 a. Graficar todos los posibles estados relacionales de una triada.
 b. Identificar los estados isomorfos.
 
-2. Graficar todos los grafos conectados con 4 vértices    .
+4. Graficar todos los grafos conectados con 4 vértices.
 
-2. Escribir una rutina que reconstruya la matriz de adyacencia a partir de la matriz de aristas y una lista de vértices asilados (si los hay).
+5. Escribir una rutina que reconstruya la matriz de adyacencia a partir de la matriz de aristas y una lista de vértices asilados (si los hay). Probar esta rutina con una red no dirigida de 25 nodos simulada a partir de enlaces aleatorios independientes e idénticamente distribuidos con probabilidad de éxito 0.1. Graficar la red de prueba.
 
-2. Escribir una rutina que reconstruya la matriz de aristas y una lista de vértices asilados (si los hay) a partir de la matriz de adyacencia.
+6. Escribir una rutina que reconstruya la matriz de aristas y una lista de vértices asilados (si los hay) a partir de la matriz de adyacencia. Probar esta rutina con una red no dirigida de 25 nodos simulada a partir de enlaces aleatorios independientes e idénticamente distribuidos con probabilidad de éxito 0.1. Graficar la red de prueba.
 
-2. Considere el conjunto de datos dado en `addhealth.RData` recopilado por *The National Longitudinal Study of Adolescent Health*, asociado con un estudio escolar sobre salud y comportamientos sociales de adolescentes de varias escuelas en los Estados Unidos. Los participantes nominaron hasta 5 niños y 5 niñas como amigos y reportaron el número de actividades extracurriculares en las que participaron juntos. El archivo `addhealth.RData` contiene una lista con dos arreglos, `X` y `E`. `X` tiene tres campos: `female` (0 = No, 1 = Sí), `race` (1 = Blanco, 2 = Negro, 3 = Hispano, 4 = Otro). `E` también tiene tres campos: `V1` (vértice de "salida") `V2` (vértice de "llegada") `activities` (número de actividades extracurriculares).
+7. Hacer una rutina que simule redes tanto dirigidas como no dirigidas a partir de enlaces aleatorios independientes e idénticamente distribuidos con una probabilidad de éxito dada. Esta rutina debe tener como argumentos el orden de la red, la probabilidad de interacción (por defecto 0.5), el tipo de red (por defecto como no dirigida) y la semilla (por defecto 42), y además, tener como retorno la matriz de adyacencia y una visualización. Probar esta rutina generando cuatro casos diferentes. 
+
+8. Considere el conjunto de datos dado en `addhealth.RData` recopilado por *The National Longitudinal Study of Adolescent Health*, asociado con un estudio escolar sobre salud y comportamientos sociales de adolescentes de varias escuelas en los Estados Unidos. Los participantes nominaron hasta 5 niños y 5 niñas como amigos y reportaron el número de actividades extracurriculares en las que participaron juntos. El archivo `addhealth.RData` contiene una lista con dos arreglos, `X` y `E`. `X` tiene tres campos: `female` (0 = No, 1 = Sí), `race` (1 = Blanco, 2 = Negro, 3 = Hispano, 4 = Otro). `E` también tiene tres campos: `V1` (vértice de "salida") `V2` (vértice de "llegada") `activities` (número de actividades extracurriculares).
 
 a. Identificar las variables nodales.
 b. Identificar y clasificar las variables relacionales.
@@ -52,7 +54,7 @@ b. Calcular el orden, el tamaño, y el diámetro del grafo.
 b. Graficar la red sin tener en cuenta las variables nodales.
 b. Identificar el top 5 de los nodos más propensos a emitir/recibir relaciones. 
   
-2. Considere el conjunto de datos dado en `conflict.RData` recopilado por Mike Ward y Xun Cao del departamento de Ciencias Políticas de la Universidad de Washington, asociado con datos de conflictos entre países en los años 90. El archivo `conflict.RData` contiene una lista con tres arreglos, `X`, `Y`, y `D`. `X` tiene tres campos: `population` (población en millones), `gdp` (PIB en millones de dolares) `polity` (puntuación política, un índice de democracia). `Y` hace referencia a una matriz $\mathbf{Y}=[y_{i,j}]$ en la que $y_{i,j}$ representa el número de conflictos iniciados por el país $i$ hacia el país $j$. Finalmente, `D`es un arreglo de tres dimensiones dimensiones cuya tercera dimensión contiene indices entre cada par de países asociados con: comercio (dimensión 1), importaciones (dimensión 2), organizaciones intergubernamentales (dimensión 3), y distancia geográfica (dimensión 4).
+9. Considere el conjunto de datos dado en `conflict.RData` recopilado por Mike Ward y Xun Cao del departamento de Ciencias Políticas de la Universidad de Washington, asociado con datos de conflictos entre países en los años 90. El archivo `conflict.RData` contiene una lista con tres arreglos, `X`, `Y`, y `D`. `X` tiene tres campos: `population` (población en millones), `gdp` (PIB en millones de dolares) `polity` (puntuación política, un índice de democracia). `Y` hace referencia a una matriz $\mathbf{Y}=[y_{i,j}]$ en la que $y_{i,j}$ representa el número de conflictos iniciados por el país $i$ hacia el país $j$. Finalmente, `D`es un arreglo de tres dimensiones dimensiones cuya tercera dimensión contiene indices entre cada par de países asociados con: comercio (dimensión 1), importaciones (dimensión 2), organizaciones intergubernamentales (dimensión 3), y distancia geográfica (dimensión 4).
 
 a. Identificar las variables nodales.
 b. Identificar y clasificar las variables relacionales.
@@ -60,4 +62,4 @@ b. Calcular el orden, el tamaño, y el diámetro del grafo.
 b. Graficar la red sin tener en cuenta las variables nodales.
 b. Identificar el top 5 de los nodos más propensos a emitir/recibir relaciones de acuerdo con los conflictos. 
 
-2. Sintetizar la sección 2.4.2 (*Special Types of Graphs*, p. 24) de *Statistical Analysis Of Network Data With R* (Kolaczyk y Csárdi, 2020).
+10. Sintetizar y replicar la sección 2.4.2 (*Special Types of Graphs*, p. 24) de *Statistical Analysis Of Network Data With R* (Kolaczyk y Csárdi, 2020).

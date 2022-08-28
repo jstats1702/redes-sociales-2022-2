@@ -453,3 +453,8 @@ Se requiere la eliminación de un solo vértice o una sola arista para dividir e
 
 Aproximadamente 15\% de los vértices son puntos de articulación.
 
+# Referencias
+
+```{r, eval = TRUE, echo=FALSE, out.width="25%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("KCbookcover1.jpg")
+```

@@ -233,7 +233,7 @@ plot(caltech, layout = layout_with_drl, vertex.size = 4, edge.color = "gray80")
 title(main = "Caltech")
 ```
 
-## Decoración
+# Decoración
 
 Si bien la posición de los vértices y la ubicación de las aristas es claramente importante en la visualización de grafos, la **información adicional se puede incorporar en las visualizaciones** variando características como el **tamaño**, la **forma** y el **color** de los **vértices** y las **aristas**.
 
@@ -343,11 +343,11 @@ party.nums <- as.numeric(as.factor(V(fblog)$PolParty))
 V(fblog)$color <- cols[party.nums]
 # grafico con Kamada-Kawai 
 set.seed(42)
-plot(fblog, layout = layout_with_kk(fblog), vertex.label=NA, vertex.size = 5, vertex.frame.color = "black")
+plot(fblog, layout = layout_with_kk, vertex.label=NA, vertex.size = 5, vertex.frame.color = "black")
 title(main = "Blogs de política")
 # grafico con DrL
 set.seed(42)
-plot(fblog, layout = layout_with_drl(fblog), vertex.label = NA, vertex.size = 5, vertex.frame.color = "black")
+plot(fblog, layout = layout_with_drl, vertex.label = NA, vertex.size = 5, vertex.frame.color = "black")
 title(main = "Blogs de política")
 ```
 

@@ -175,7 +175,7 @@ plot(aidsblog, layout = layout_in_circle, vertex.size = 3)
 title(main = "Blogs de SIDA")
 ```
 
-##  Diseño del algoritmo de Fruchterman y Reingold
+##  Algoritmo de Fruchterman y Reingold
 
 ***Fruchterman, T.M.J. and Reingold, E.M. (1991). Graph Drawing by Force-directed Placement. Software - Practice and Experience, 21(11):1129-1164.***
 

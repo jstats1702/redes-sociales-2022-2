@@ -8,6 +8,7 @@ Materiales del curso de **Análisis Estadístico de Redes Sociales** ofreciendo 
 2. Manipulación de datos relacionales.
 3. Visualización de datos relacionales.
 4. Caracterización de vértices.
+5. Caracterización de la conectividad.
 
 ## Talleres
 

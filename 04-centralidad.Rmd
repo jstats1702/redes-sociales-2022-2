@@ -196,11 +196,13 @@ dd <- degree_distribution(yeast)
 par(mfrow = c(1,2))
 plot(NA, NA, type = "n", xlim = c(0,120), ylim = c(0,0.08), xlab = "Grado", ylab = "Densidad", main = "Distribución de grado")
 hist(d, freq = F, col = "lightskyblue", border = "royalblue", add = T)
-plot((0:max(d))[dd != 0], dd[dd != 0], log = "xy", pch = 16, col = "royalblue", xlab = "Log-grado", ylab = "Log-densidad", main = "Distribución de grado (log-log)")
+plot((0:max(d))[dd != 0], dd[dd != 0], log = "xy", pch = 16, col = adjustcolor("royalblue", 0.5), xlab = "Log-grado", ylab = "Log-densidad", main = "Distribución de grado (log-log)")
 ```
 
 
-Hay una porción importante de vértices de grado bajo, pero también hay una fracción no trivial de vértices con grados altos.
+Hay una porción importante de vértices de grado bajo, junto con una fracción no trivial de vértices con grados altos conocidos como **centros** (*hubs*).
+
+La presencia de centros le da a la distribución del grado una **cola larga a la derecha**, lo que indica la presencia de nodos con un grado mucho más alto que la mayoría de los otros nodos.
 
 Hay un decaimiento aproximadamente lineal en la frecuencia logarítmica en función del grado logarítmico. 
 
@@ -208,16 +210,34 @@ Si bien es posible resumir la tasa de esta disminución usando regresión lineal
 
 La **distribución de la ley de potencias** (*power law distribution*) señala que la distribución del grado $d$ es de la forma
 $$
-f_d = a\,d^{-b}\,,\qquad a>0\,,\qquad b>0\,
+f_d = \mathrm{c}\,d^{-\alpha}\,,\qquad \mathrm{c}>0\,,\qquad \alpha>1\,,
 $$
 lo que en escala log corresponde a
 $$
-\log f_d = \log a - b\log d\,.
+\log f_d = \log \mathrm{c} - \alpha\log d\,.
 $$
-$a$ se denomina constante de normalización y $b$ exponente de la ley de potencias.
+$\mathrm{c}$ se denomina constante de normalización y $\alpha$ exponente de la ley de potencias (similar a la **distribución de Pareto**).
 
-Las redes que satisfacen este tipo de distribución del grado se denominan **libres de escala** (*scale free*).
+Las redes que satisfacen este tipo de distribución del grado se denominan **libres de escala** (*scale free*) dado que
+$$
+f_{a\,d} =   a^{-\alpha}\,f_d\,.
+$$
 
+```{r}
+# ajuste de un modelo de potencias
+# usando lm
+y <- log(dd[dd != 0])
+x <- log((0:max(d))[dd != 0])
+fit <- lm(y ~ x)
+fit$coefficients
+# usando igraph
+fit <- fit_power_law(x = dd, implementation = "plfit")
+fit$alpha
+fit$xmin
+```
+Los vértices de grados superiores tienden a vincularse con vértices similares en este sentido. 
+
+Mientras que los vértices de grados inferiores tienden a relacionarse tanto con vértices de grados inferiores como superiores.
 
 ```{r, fig.height = 6, fig.width = 6}
 # grado promedio de los vecinos (GPV) mas cercados (orden 1)
@@ -225,12 +245,8 @@ mnd <- knn(graph = yeast, vids = V(yeast))$knn
 mnd[1]
 mean(d[as.numeric(neighbors(graph = yeast, v = 1))])
 # grado y GPV
-plot(d, mnd, log = "xy", pch = 16, col = "yellow3", xlab = "Log-grado", ylab = "Log-grado promedio de los vecinos")
+plot(d, mnd, log = "xy", pch = 16, col = adjustcolor("yellow3", 0.5), xlab = "Log-grado", ylab = "Log-grado promedio de los vecinos")
 ```
-
-Los vértices de grados superiores tienden a vincularse con vértices similares en este sentido. 
-
-Mientras que los vértices de grados inferiores tienden a relacionarse tanto con vértices de grados inferiores como superiores.
 
 
 # Centralidad

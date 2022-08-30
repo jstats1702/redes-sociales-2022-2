@@ -91,9 +91,8 @@ data(karate)
 # visualizacion
 par(mfrow = c(1,2))
 set.seed(42)
-plot(karate, layout = layout_with_fr(karate), vertex.size = 12, vertex.frame.color = "black", vertex.label.color = "black")
-set.seed(42)
-plot(karate, layout = layout_with_kk(karate), vertex.size = 12, vertex.frame.color = "black", vertex.label.color = "black")
+plot(karate, layout = layout_with_fr, vertex.size = 12, vertex.frame.color = "black", vertex.label.color = "black")
+plot(karate, layout = layout_with_kk, vertex.size = 12, vertex.frame.color = "black", vertex.label.color = "black")
 title(main = "Zachary", outer = T, line = -1)
 ```
 

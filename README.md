@@ -14,6 +14,7 @@ Materiales del curso de **Análisis Estadístico de Redes Sociales** ofreciendo 
 
 - Taller 1.
 - Taller 2.
+- Taller 3.
 
 ## Data
 

@@ -62,16 +62,16 @@ La función de perdida debe reflejar la **noción de subconjuntos "cohesivos" de
 
 ***M. Newman and M. Girvan, "Finding and evaluating community structure in networks", Physical Review E, vol. 69, no. 2, p. 26113, 2004.***.
 
+https://arxiv.org/pdf/cond-mat/0308217.pdf
+
 Una función de perdida es la **modularidad** (*modularity*), que para una partición $\mathcal{C}=\{C_1,\ldots,C_K\}$ se define como:
 $$
-\textsf{mod}(\mathcal{C}) = \sum_{k=1}^K (f_{k,k} - f^*_{k,k})^2\,,
+\textsf{mod}(\mathcal{C}) = \sum_{k=1}^K (e_{k,k} - f_{k,k}^2)\,,
 $$
 donde:
 
 - $f_{k,\ell}$: fracción de enlaces en la red que conectan los vértices de $C_k$ con los vértices de $C_\ell$.
-- $f^*_{k,\ell}$: valor esperado de $f_{k,\ell}$ bajo un **modelo de asignación** de aristas. 
-
-Típicamente, $f^*_{k,\ell}=f_{k\bullet}f_{\bullet\ell}$ donde $f_{k\bullet}=\sum_{\ell=1}^Kf_{k,\ell}$ y $f_{\bullet\ell}=\sum_{k=1}^K f_{k,\ell}$ (para redes no dirigidas se tiene que $f_{k\bullet} = f_{\bullet\ell}$). Esta elección corresponde a un modelo diseñado para reproducir la distribución de grados de la red.
+- $e_{k,\ell}$: valor esperado de $f_{k,\ell}$ bajo un **modelo de asignación** de aristas en el que las aristas se forman sin tener en cuenta las comunidades a las que pertenecen los vértices, i.e., $e_{k,\ell}=f_{k\bullet}f_{\bullet\ell}$ donde $f_{k\bullet}=\sum_{\ell=1}^Kf_{k,\ell}$ y $f_{\bullet\ell}=\sum_{k=1}^K f_{k,\ell}$ (para redes no dirigidas se tiene que $f_{k\bullet} = f_{\bullet\ell}$)
 
 Un valor "grande" de la modularidad indica que $\mathcal{C}$ corresponde a una partición que difiere sustancialmente de lo esperado bajo el modelo de asignación de aristas bajo consideración.
 
@@ -82,6 +82,8 @@ Un valor "grande" de la modularidad indica que $\mathcal{C}$ corresponde a una p
 La **matriz de modularidad** (*modularity matrix*) de un grafo $G=(V,E)$ con matriz de adyacencia $\mathbf{Y}$ corresponde a la matriz $\mathbf{A} = \mathbf{Y} - \mathbf{P}$, donde $\mathbf{P}$ contiene las probabilidades de interacción en una red aleatoria en la que los grados de todos los vértices son iguales que en $G$.
 
 ***M. Newman, "Finding community structure using the eigenvectors of matrices", Physical Review E, vol. 74, no. 3, p. 036104, 2006.***
+
+https://arxiv.org/pdf/physics/0605087.pdf
 
 El método funciona calculando el vector propio de la matriz de modularidad para el valor propio positivo más grande y luego separando los vértices en dos comunidades según el signo del elemento correspondiente en el vector propio. Si todos los elementos del vector propio tienen el mismo signo, eso significa que la red no tiene una estructura comunitaria subyacente.
 
@@ -287,7 +289,7 @@ kc_infomap <- cluster_infomap(karate)
 ```
 
 
-```{r, fig.width=12, fig.height=12}
+```{r, fig.width=12, fig.height=12, fig.align='center'}
 # graficos
 igraph_options(vertex.size = 10, vertex.frame.color = "black")
 par(mfrow = c(3,3))
@@ -337,7 +339,7 @@ Para estos datos, $y_{i,j} = 1$ si los hogares $i$ y $j$ tienen están relaciona
 knitr::include_graphics("clustering_karnataca.png")
 ```
 
-```{r, fig.width=12, fig.height=6}
+```{r}
 # datos
 suppressMessages(suppressWarnings(library(igraph)))
 load("salter543_data.RData")
@@ -350,17 +352,30 @@ ecount(karna)
 is_directed(karna)
 # ponderada?
 is_weighted(karna)
+# conectada?
+is_connected(karna)
+# componentes
+componentes <- decompose(karna)
+sapply(X = componentes, FUN = vcount)
+# componente gigante
+karna <- componentes[[1]]
 # aplicacion de algoritmos
 kc_fast_greedy <- igraph::cluster_fast_greedy(karna)
 kc_leading_eigen <- cluster_leading_eigen(karna)
-# grafos
-par(mfrow = c(1,2))
-igraph_options(vertex.size = 5, vertex.frame.color = "black")
-set.seed(42)
-l = layout_with_fr(karna)
-plot(karna, vertex.label = NA, vertex.color = kc_fast_greedy$membership, main = paste0("fast greedy: ", "Mod = ", round(modularity(kc_fast_greedy), 4)))
-plot(karna, vertex.label = NA, vertex.color = kc_leading_eigen$membership, main = paste0("leading eigen: ", "Mod = ", round(modularity(kc_leading_eigen), 4)))
 ```
+
+
+```{r, fig.width=12, fig.height=6, fig.align='center'}
+# visualizacion
+par(mfrow = c(1,2))
+set.seed(42)
+l  <- layout_nicely(karna)
+dc <- degree (graph = karna, normalized = T)
+igraph_options(vertex.size = 25*sqrt(dc), edge.color = "gray85")
+plot(karna, vertex.label = NA, vertex.color = adjustcolor(kc_fast_greedy$membership, 0.3), vertex.frame.color = adjustcolor(kc_fast_greedy$membership, 0.3), main = paste0("fast greedy: ", "Mod = ", round(modularity(kc_fast_greedy), 4)))
+plot(karna, vertex.label = NA, vertex.color = adjustcolor(kc_leading_eigen$membership, 0.3), vertex.frame.color = adjustcolor(kc_leading_eigen$membership, 0.3), main = paste0("leading eigen: ", "Mod = ", round(modularity(kc_leading_eigen), 4)))
+```
+
 
 
 ```{r, fig.width=12, fig.height=6}
@@ -373,18 +388,16 @@ A <- tmp$A
 d <- tmp$d
 heat.plot0(mat = A, labs = NA, tick = F, main = paste0("fast greedy: ", "Mod = ", round(modularity(kc_fast_greedy), 4)))
 abline(v = d+.5, h = d+.5)
-# leading_eigen (primero reordenar etiquetas)
+# leading_eigen
 xi <- kc_leading_eigen$membership
-tab <- table(xi)
-lab_ord <- as.numeric(names(tab))[order(tab, decreasing = T)]
-xi0 <- xi
-for (k in 1:max(xi)) xi[xi0 == lab_ord[k]] <- k
 tmp <- get_adjacency_ordered(xi = xi, A = Ycube)
 A <- tmp$A
 d <- tmp$d
 heat.plot0(mat = A, labs = NA, tick = F, cex.axis = 0.4, main = paste0("fast greedy: ", "Mod = ", round(modularity(kc_leading_eigen), 4)))
 abline(v = d+.5, h = d+.5)
 ```
+
+
 
 
 # Referencias

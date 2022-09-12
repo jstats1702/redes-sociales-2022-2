@@ -1,0 +1,46 @@
+---
+title: "Taller 4"
+author: 
+- Juan Sosa PhD
+- Webpage https://sites.google.com/view/juansosa/ 
+- YouTube https://www.youtube.com/c/JuanSosa1702 
+- GitHub  https://github.com/jstats1702 
+- Rpubs   https://rpubs.com/jstats1702
+date: ""
+output:
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+1. David Krackhardt recopiló datos relacionales acerca de la estructura social cognitiva de 21 miembros del personal administrativo de una empresa de fabricación de maquinaria de alta tecnología para evaluar los efectos de una intervención administrativa. Una de las relaciones consultada fue "¿Quién es amigo de X?". Cada persona indicó no solo sus relaciones de amistad, sino también las relaciones que percibió entre todos los demás empleados, generando una matriz de adyacencia de $21 \times 21$ involucrando cada persona en el grupo.
+  
+    El conjunto de datos se encuentra disponible en http://vlado.fmf.uni-lj.si/pub/networks/data/ucinet/krackfr.dat. Este archivo contiene la estructura social cognitiva completa de dimensión 21, es decir, veintiuna matrices de adyacencia de 21 × 21, donde la matriz $j$ contiene la percepción del actor $j$ acerca de las relaciones de amistad del sistema social en el que se encuentra inmerso, con $j=1,\ldots,21$. Además, el archivo `krackhardt21c.txt` contiene información acerca de cada uno de los actores: `age` (edad en años cumplidos), `tenure` (tiempo de trabajo en la compañía en años cumplidos), `level` (cargo; 1: presidente, 2: vicepresidente, 3: gerente) `dept` (departamento de la compañía en el que trabaja; el presidente no pertenece a ningún departamento). 
+
+a. Obtener la red de consenso cuya matriz de adyacencia $\mathbf{Y}=[y_{i,j}]$ está dada por $y_{i,j}=1$ si $\frac{1}{I}\sum_{k=1}^I y_{i,j,k} > 0.5$ y $y_{i,j}=0$ en otro caso, donde $I$ el número de actores en el sistema, y $y_{i,j,k}$ es la percepción $k$ acerca de la relación entre los actores $i$ y $j$.
+b. Hacer visualizaciones no decoradas en un diseño circular de todas las percepciones y de la matriz de consenso. ¿Parece haber diferencias entre las percepciones y entre cada una de las percepciones y la red de consenso?
+c. Calcular el grado (normalizado) para cada actor en cada percepción y el consenso. Para cada actor hacer un diagrama de caja que describa la distribución de su grado a través de todas las percepciones y el consenso. Distinguir con color rojo y un triángulo ($\triangle$) el grado de acuerdo a su propia percepción y con color azul y una cruz ($\times$) el grado de acuerdo con el consenso. Representar todos los diagramas de caja en un solo gráfico. Un ejemplo de tal gráfico se puede encontrar en https://arxiv.org/pdf/1711.03662.pdf, página 9. ¿Los actores parecen tener una percepción adecuada de su participación en las relaciones del sistema?
+d. Repetir el numeral anterior para una medida de centralidad de su elección. ¿Los actores parecen tener una percepción adecuada de su participación en las relaciones del sistema?
+e. Calcular la densidad de cada percepción. Representar estos valores por medio de un histograma. Representar con una linea vertical la densidad del consenso. ¿Las percepciones de la densidad de las relaciones están concordancia con el consenso?
+f. Repetir el numeral anterior tanto para la transitividad como para la asortatividad. 
+g. Particionar la red de consenso usando tres métodos de agrupamiento de su elección. Visualizar los resultados obtenidos. Mediante el RI y el RI ajustado comparar las particiones obtenidas con el la partición dada por el departamento al cual pertenecen los empleados.
+
+2. Considere la base de datos relacionales de su interés que reportó en el numeral 8. del Taller 2.
+
+a. Particionar la red de consenso usando tres métodos de agrupamiento de su elección. Visualizar los resultados obtenidos.
+b. Hacer un análisis de  asortatividad de la red.
+c. Interpretar los resultados.
+
+3. Sintetizar y replicar el Cap. 8 de Luke, D. A. (2015).
+
+4. Sintetizar y replicar el Cap. 9 de Luke, D. A. (2015).
+
+# Referencias {-}
+
+**Luke, D. A. (2015). A user's guide to network analysis in R. New York: Springer.** https://link.springer.com/book/10.1007/978-3-319-23883-8
+

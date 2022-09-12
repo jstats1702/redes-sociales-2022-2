@@ -9,12 +9,15 @@ Materiales del curso de **Análisis Estadístico de Redes Sociales** ofreciendo 
 3. Visualización de datos relacionales.
 4. Caracterización de vértices.
 5. Caracterización de la conectividad.
+6. Agrupamiento.
+7. Asortatividad.
 
 ## Talleres
 
 - Taller 1.
 - Taller 2.
 - Taller 3.
+- Taller 4.
 
 ## Data
 
@@ -22,3 +25,4 @@ Materiales del curso de **Análisis Estadístico de Redes Sociales** ofreciendo 
 - conflict.Rdata
 - caltech.txt
 - comtrade.RData
+- krackhardt21c.txt

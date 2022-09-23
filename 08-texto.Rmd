@@ -872,6 +872,7 @@ grupos_petro %>%
   arrange(desc(eigen)) %>%
   head(n = 5)
 ```
+### Duque: Top 5 grupo mayor {-}
 
 ```{r, echo=F}
 V(gcc_duque)$membership <- kc_duque$membership

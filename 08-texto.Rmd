@@ -1,0 +1,899 @@
+---
+title: "Relaciones entre palabras"
+author: 
+- Juan Sosa PhD
+- Webpage https://sites.google.com/view/juansosa/ 
+- YouTube https://www.youtube.com/c/JuanSosa1702 
+- GitHub  https://github.com/jstats1702 
+- Rpubs   https://rpubs.com/jstats1702
+date: ""
+output:
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Introducción
+
+**Procesamiento de lenguaje natural** (*natural language processing*) o **lingüística computacional** (*computational linguistics*).
+
+Extraer significado algorítmicamente de textos.
+
+Los computadores son buenos para procesar texto, pero no son buenos entendiéndolo. Por el contrario los humanos son buenos para entender texto, pero no son buenos para procesarlo.
+
+
+## Objetivos {-}
+
+- Identificar palabras con mayor importancia.
+- Cuantificar relaciones y conexiones entre palabras.
+
+
+# Caso de estudio: Discursos Petro y Duque ante la ONU
+
+```{r, eval = TRUE, echo=FALSE, out.width="60%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("text_petro_duque.jpg")
+```
+
+## Petro {-}
+
+22 de septiembre de 2022
+
+https://cuestionpublica.com/descarga-el-discurso-del-presidente-gustavo-petro-en-la-onu/
+
+
+## Duque {-} 
+
+21 de septiembre de 2021
+
+https://nuevayork-onu.mision.gov.co/newsroom/news/discurso-del-presidente-la-republica-colombia-ivan-duque-marquez-ante-la-asamblea
+
+# Importar texto
+
+```{r}
+##### importar datos
+suppressMessages(suppressWarnings(library(readr)))
+suppressMessages(suppressWarnings(library(tidyverse)))
+# warnings debido a caracteres no UTF-8 o vacios ("")
+# UTF-8 (8-bit Unicode Transformation Format) es un formato de codificación de caracteres 
+# capaz de codificar todos los code points validos en Unicode
+text_petro <- read_csv("discurso_onu_petro.txt", col_names = FALSE, show_col_types = FALSE)
+class(text_petro)
+text_petro <- c(text_petro)
+class(text_petro)
+text_petro <- unlist(text_petro)
+class(text_petro)
+names(text_petro) <- NULL  # importante!
+head(text_petro, n = 3)
+# duque
+text_duque <- unlist(c(read_csv("discurso_onu_duque.txt", col_names = FALSE, show_col_types = FALSE)))
+names(text_duque) <- NULL
+```
+
+```{r}
+##### data frame formato tidy
+# petro
+text_petro <- tibble(line = 1:length(text_petro), text = text_petro)  # tibble en lugar de data_frame
+class(text_petro)
+dim(text_petro)
+head(text_petro, n = 3)
+# texto no normalizado
+# no tiene "estructura" para analizar
+# duque
+text_duque <- tibble(line = 1:length(text_duque), text = text_duque)
+```
+
+
+
+# Tokenización
+
+Almacenar el texto en formato estructurado.
+
+Token: unidad de análisis.
+
+La tokenización básica consiste en que cada token es una palabra.
+
+Formato de de un token por linea.
+
+Por defecto se elimina la puntuación y se normaliza el texto a minúsculas (las tíldes no se eliminan por defecto).
+
+
+```{r}
+suppressMessages(suppressWarnings(library(tidytext)))
+suppressMessages(suppressWarnings(library(magrittr)))
+##### tokenizacion formato tidy
+# ---------- petro ----------
+text_petro %<>%
+  unnest_tokens(input = text, output = word) %>%
+  filter(!is.na(word))  # importante!
+class(text_petro)
+dim(text_petro)
+head(text_petro, n = 10)
+# ---------- duque ----------
+text_duque %<>%
+  unnest_tokens(input = text, output = word) %>%
+  filter(!is.na(word))
+dim(text_duque)
+head(text_duque, n = 10)
+```
+
+# Normalización del texto
+
+Remover:
+
+- Minúsculas.
+- Puntuación.
+- Símbolos especiales (e.g., \#).
+- Números.
+- Acentos. 
+- Sufijos (e.g., conservar "comput" en lugar de "computational", "computers", "computation").
+- *Stop words* (e.g., artículos, preposiciones).
+
+
+```{r}
+##### texto con numeros?
+# ---------- petro ----------
+text_petro %>%
+  filter(grepl(pattern = '[0-9]', x = word)) %>% 
+  count(word, sort = TRUE)
+# ---------- duque ----------
+text_duque %>%
+  filter(grepl(pattern = '[0-9]', x = word)) %>% 
+  count(word, sort = TRUE)
+```
+
+```{r}
+##### remover texto con numeros
+# ---------- petro ----------
+text_petro %<>%
+  filter(!grepl(pattern = '[0-9]', x = word))
+dim(text_petro)
+# ---------- duque ----------
+text_duque %<>%
+  filter(!grepl(pattern = '[0-9]', x = word))
+dim(text_duque)
+```
+
+
+```{r}
+##### stop words 
+# 3 diccionarios en ingles (onix, SMART, snowball) incluidos por defecto en tidytext
+data(stop_words)
+class(stop_words)
+dim(stop_words)
+head(stop_words, n = 10)
+table(stop_words$lexicon)
+```
+
+
+
+```{r}
+###### stop words 
+# no hay diccionarios en español disponibles en tidytext
+# diccionario COUNTWORDSFREE en español (con acentos)
+# http://countwordsfree.com/stopwords/spanish
+# otras alternativas:
+#   https://github.com/stopwords-iso/stopwords-es
+#   de tm::stopwords("spanish")
+# se conserva el mismo formato de los diccionarios en tidytext
+stop_words_es <- tibble(word = unlist(c(read.table("stop_words_spanish.txt", quote="\"", comment.char=""))), lexicon = "custom")
+dim(stop_words_es)
+head(stop_words_es, n = 10)
+```
+
+
+
+```{r}
+##### remover stop words
+# ---------- petro ----------
+text_petro %<>% 
+  anti_join(x = ., y = stop_words_es)
+dim(text_petro)
+head(text_petro, n = 10)
+# ---------- duque ----------
+text_duque %<>% 
+  anti_join(x = ., y = stop_words_es)
+dim(text_duque)
+head(text_duque, n = 10)
+```
+
+
+
+```{r}
+##### remover acentos
+replacement_list <- list('á' = 'a', 'é' = 'e', 'í' = 'i', 'ó' = 'o', 'ú' = 'u')
+# ---------- petro ----------
+text_petro %<>% 
+  mutate(word = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word))
+dim(text_petro)
+head(text_petro, n = 10)
+# ---------- duque ----------
+text_duque %<>% 
+  mutate(word = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word))
+dim(text_duque)
+head(text_duque, n = 10)
+```
+
+
+# Tokens más frecuentes
+
+
+
+```{r}
+##### top 10 de tokens mas frecuentes
+# ---------- petro ----------
+text_petro %>% 
+  count(word, sort = TRUE) %>%
+  head(n = 10)
+# ---------- duque ----------
+text_duque %>% 
+  count(word, sort = TRUE)  %>%
+  head(n = 10)
+```
+
+
+
+```{r, fig.width=10, fig.height=5, fig.align='center'}
+##### viz
+suppressMessages(suppressWarnings(library(gridExtra)))
+# ---------- petro ----------
+text_petro %>%
+  count(word, sort = TRUE) %>%
+  filter(n > 7) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(x = word, y = n)) +
+    theme_light() + 
+    geom_col(fill = 'darkolivegreen4', alpha = 0.8) +
+    xlab(NULL) +
+    ylab("Frecuencia") +
+    coord_flip() +
+    ggtitle(label = 'Petro: Conteo de palabras') -> p1
+# ---------- duque ----------
+text_duque %>%
+  count(word, sort = TRUE) %>%
+  filter(n > 7) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(x = word, y = n)) +
+    theme_light() + 
+    geom_col(fill = 'blue4', alpha = 0.8) +
+    xlab(NULL) +
+    ylab("Frecuencia") +
+    coord_flip() +
+    ggtitle(label = 'Duque: Conteo de palabras') -> p2
+# desplegar grafico
+grid.arrange(p1, p2, ncol = 2)
+```
+
+
+
+```{r, fig.width=10, fig.height=5, fig.align='center'}
+suppressMessages(suppressWarnings(library(wordcloud)))
+###### viz
+par(mfrow = c(1,2), mar = c(1,1,2,1), mgp = c(1,1,1))
+# ---------- petro ----------
+set.seed(123)
+text_petro %>%
+  count(word, sort = TRUE) %>%
+  with(wordcloud(words = word, freq = n, max.words = 20, colors = 'darkolivegreen4'))
+title(main = "Petro")
+# ---------- duque ----------
+set.seed(123)
+text_duque %>%
+  count(word, sort = TRUE) %>%
+  with(wordcloud(words = word, freq = n, max.words = 20, colors = 'blue4'))
+title(main = "Duque")
+```
+
+
+```{r}
+##### frecuencias relativas de la palabras
+bind_rows(mutate(.data = text_petro, author = "petro"),
+                       mutate(.data = text_duque, author = "duque")) %>%
+  count(author, word) %>%
+  group_by(author) %>%
+  mutate(proportion = n/sum(n)) %>%
+  select(-n) %>%
+  spread(author, proportion, fill = 0) -> frec  # importante!
+frec %<>% 
+  select(word, petro, duque)
+dim(frec)
+head(frec, n = 10)
+```
+
+
+```{r}
+##### top 10 palabras en comun
+# orden anidado respecto a petro y duque
+frec %>%
+  filter(petro !=0, duque != 0) %>%
+  arrange(desc(petro), desc(duque)) -> frec_comun
+dim(frec_comun)
+head(frec_comun, n = 10)
+```
+
+
+```{r}
+###### proporcion palabras en comun
+dim(frec_comun)[1]/dim(frec)[1]
+```
+
+
+
+```{r}
+##### correlacion de las frecuencias
+# cuidado con los supuestos de la prueba
+# es posible usar Bootstrap como alternativa
+cor.test(x = frec$duque, y = frec$petro)
+cor.test(x = frec_comun$duque, y = frec_comun$petro)
+```
+
+
+
+# Análisis de sentimiento
+
+A las palabras (tokens simples o unigramas) se les asigna un **puntaje** (escala, positivo/negativo, emoción).
+
+El **sentimiento** se define como la suma del puntaje de las palabras individuales.
+
+Diccionarios:
+
+- Basados en tokens simples, no expresiones compuestas (e.g. "no good").
+- Hay palabras neutras.
+
+Objetivos:
+
+- Entender actitudes y opiniones.
+- Identificar flujos de narrativas.
+- Cuantificar la contribución de palabras en la expresión de un sentimiento.
+- Abordar el contenido emocional de un texto algorítmicamente.
+
+Caveats:
+
+- Tener en cuenta sarcasmo y expresiones compuestas en la interpretación.
+- Cuidado con los cambios semánticos debido a composiciones de unigramas. Por ejemplo, como "I'm not happy and I don't like it!" dado que las que esta compuesta palabras positivas (¡hacer n-gramas).
+
+
+```{r}
+##### sentiments 
+# 3 diccionarios en ingles (AFINN, Bing, NRC) incluidos por defecto en tidytext
+# AFINN: Finn Arup Nielsen, escala de -5 a 5.
+#   http://www2.imm.dtu.dk/pubdb/views/publication_details.php?id=6010
+# Bing: Bing Liu and collaborators, clasificacion binaria (+/-).
+#   https://www.cs.uic.edu/~liub/FBS/sentiment-analysis.html
+# NRC: Saif Mohammad and Peter Turney, clasificacion binaria (+/-) y algunas categorias.
+#   http://saifmohammad.com/WebPages/NRC-Emotion-Lexicon.htm
+```
+
+
+
+```{r}
+# diccionarios
+# no hay diccionarios en español disponibles en tidytext
+# https://www.kaggle.com/datasets/rtatman/sentiment-lexicons-for-81-languages
+positive_words <- read_csv("positive_words_es.txt", col_names = "word", show_col_types = FALSE) %>%
+  mutate(sentiment = "Positivo")
+negative_words <- read_csv("negative_words_es.txt", col_names = "word", show_col_types = FALSE) %>%
+  mutate(sentiment = "Negativo")
+sentiment_words <- bind_rows(positive_words, negative_words)
+# comparacion de diccionarios
+get_sentiments("bing") %>%
+  count(sentiment)
+sentiment_words %>%
+  count(sentiment)
+```
+
+
+```{r, fig.width=11, fig.height=4, fig.align='center'}
+###### viz
+suppressMessages(suppressWarnings(library(RColorBrewer)))
+# ---------- petro ----------
+text_petro %>%
+  inner_join(sentiment_words) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  filter(n > 2) %>%
+  mutate(n = ifelse(sentiment == "Negativo", -n, n)) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n, fill = sentiment)) +
+    geom_col() +
+    scale_fill_manual(values = brewer.pal(8,'Dark2')[c(2,5)]) +
+    coord_flip(ylim = c(-7,7)) +
+    labs(y = "Frecuencia",
+         x = NULL,
+         title = "Petro: Conteo por sentiment") +
+    theme_minimal() -> p1
+# ---------- duque ----------
+text_duque %>%
+  inner_join(sentiment_words) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  filter(n > 2) %>%
+  mutate(n = ifelse(sentiment == "Negativo", -n, n)) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n, fill = sentiment)) +
+    geom_col() +
+    scale_fill_manual(values = brewer.pal(8,'Dark2')[c(2,5)]) +
+    coord_flip(ylim = c(-7,7)) +
+    labs(y = "Frecuencia",
+         x = NULL,
+         title = "Duque: Conteo por sentiment") +
+    theme_minimal() -> p2 
+# desplegar grafico
+grid.arrange(p1, p2, ncol = 2)
+```
+
+
+
+
+```{r, fig.width=10, fig.height=6, fig.align='center'}
+suppressMessages(suppressWarnings(library(reshape2)))  # acast
+##### viz
+par(mfrow = c(1,2), mar = c(1,1,2,1), mgp = c(1,1,1))
+# ---------- petro ----------
+set.seed(123)
+text_petro %>%
+  inner_join(sentiment_words) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  acast(word ~ sentiment, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = brewer.pal(8,'Dark2')[c(2,5)], 
+                   max.words = 50, title.size = 1.5)
+title(main = "Petro")
+# ---------- petro ----------
+set.seed(123)
+text_duque %>%
+  inner_join(sentiment_words) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  acast(word ~ sentiment, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = brewer.pal(8,'Dark2')[c(2,5)], 
+                   max.words = 50, title.size = 1.5)
+title(main = "Duque")
+```
+
+
+
+# Petro: Bigramas
+
+Se ha usado `unnest_tokens` para tokenizar por palabras individuales.
+
+Ahora se quiere tokenizar por **secuencias de palabras**.
+
+¿Qué palabras tienden a seguir otras? ¿Qué palabras tienden a co-ocurrir juntas?
+
+
+```{r}
+##### bigramas: ejemplo de juguete
+# texto
+text <- c("Durante 155 años le hemos cumplido a Colombia", 
+          "a los jóvenes de nuestro país", 
+          "al futuro", 
+          "a la educación", 
+          "el conocimiento y a la construcción colectiva de conocimiento en todas las regiones.")
+# convertir a data frame
+text_df <- tibble(line = 1:length(text), text = text)
+# tokenizar en bigramas
+text_df %>% 
+  unnest_tokens(tbl = ., input = text, output = bigram, token = "ngrams", n = 2) %>%
+  head(n = 10)
+```
+
+
+```{r}
+##### importar datos
+text_petro <- unlist(c(read_csv("discurso_onu_petro.txt", col_names = FALSE, show_col_types = FALSE)))
+names(text_petro) <- NULL
+text_petro <- tibble(line = 1:length(text_petro), text = text_petro)
+```
+
+
+
+```{r}
+##### tokenizar en bigramas
+# en este caso cada token es un bigrama
+text_petro %>%
+  unnest_tokens(tbl = ., input = text, output = bigram, token = "ngrams", n = 2) %>%
+  filter(!is.na(bigram)) -> text_petro_bi  # importante!
+dim(text_petro_bi)
+head(text_petro_bi, n = 10)
+```
+
+
+
+```{r}
+###### top 10 de bigramas mas frecuentes
+# hay bigramas que no son interesantes (e.g., "de la")
+# esto motiva el uso de stop words nuevamente
+text_petro_bi %>%
+  count(bigram, sort = TRUE) %>%
+  head(n = 10)
+```
+
+
+```{r}
+##### omitir stop words
+text_petro_bi %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>%
+  filter(!grepl(pattern = '[0-9]', x = word1)) %>%
+  filter(!grepl(pattern = '[0-9]', x = word2)) %>%
+  filter(!word1 %in% stop_words_es$word) %>%
+  filter(!word2 %in% stop_words_es$word) %>%
+  mutate(word1 = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word1)) %>%
+  mutate(word2 = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word2)) %>%
+  filter(!is.na(word1)) %>% 
+  filter(!is.na(word2)) %>%
+  count(word1, word2, sort = TRUE) %>%
+  rename(weight = n) -> text_petro_bi_counts  # importante para la conformacion de la red!
+dim(text_petro_bi_counts)
+head(text_petro_bi_counts, n = 10)
+```
+
+
+```{r, fig.width=6, fig.height=6, fig.align='center'}
+##### definir una red a partir de la frecuencia (weight) de los bigramas
+# binaria, no dirigida, ponderada, simple
+# se recomienda variar el umbral del filtro y construir bigramas no consecutivos para obtener redes con mayor informacion
+suppressMessages(suppressWarnings(library(igraph)))
+g <- text_petro_bi_counts %>%
+  filter(weight > 2) %>%
+  graph_from_data_frame(directed = FALSE)
+# viz
+set.seed(123)
+plot(g, layout = layout_with_fr, vertex.color = 1, vertex.frame.color = 1, vertex.size = 3, vertex.label.color = 'black', vertex.label.cex = 1, vertex.label.dist = 1, main = "Umbral = 3")
+```
+
+
+
+
+```{r, fig.width=6, fig.height=6, fig.align='center'}
+##### red con un umbral diferente
+g <- text_petro_bi_counts %>%
+  filter(weight > 0) %>%
+  graph_from_data_frame(directed = FALSE)
+# viz
+set.seed(123)
+plot(g, layout = layout_with_kk, vertex.color = 1, vertex.frame.color = 1, vertex.size = 3, vertex.label = NA, main = "Umbral = 1")
+```
+
+
+
+```{r, fig.width=12, fig.height=6, fig.align='center'}
+##### componente conexa mas grande de la red
+g <- text_petro_bi_counts %>%
+  filter(weight > 0) %>%
+  graph_from_data_frame(directed = FALSE)
+# grafo inducido por la componente conexa
+V(g)$cluster <- clusters(graph = g)$membership
+gcc <- induced_subgraph(graph = g, vids = which(V(g)$cluster == which.max(clusters(graph = g)$csize)))
+par(mfrow = c(1,2), mar = c(1,1,2,1), mgp = c(1,1,1))
+# viz 1
+set.seed(123)
+plot(gcc, layout = layout_with_kk, vertex.color = 1, vertex.frame.color = 1, vertex.size = 3, vertex.label.color = 'black', vertex.label.cex = 0.9, vertex.label.dist = 1)
+# viz 2
+set.seed(123)
+plot(gcc, layout = layout_with_kk, vertex.color = adjustcolor('darkolivegreen4', 0.1), vertex.frame.color = 'darkolivegreen4', vertex.size = 2*strength(gcc), vertex.label.color = 'black', vertex.label.cex = 0.9, vertex.label.dist = 1, edge.width = 3*E(g)$weight/max(E(g)$weight))
+title(main = "Componente conexa", outer = T, line = -1)
+```
+
+
+
+
+# Petro: Skip-grams
+
+
+```{r}
+##### skip-gram: ejemplo de juguete
+# texto
+text <- c("Durante 155 años le hemos cumplido a Colombia", 
+          "a los jóvenes de nuestro país", 
+          "al futuro", 
+          "a la educación", 
+          "el conocimiento y a la construcción colectiva de conocimiento en todas las regiones.")
+# convertir a data frame
+text_df <- tibble(line = 1:length(text), text = text)
+# tokenizar en bigramas
+text_df %>% 
+  unnest_tokens(tbl = ., input = text, output = skipgram, token = "skip_ngrams", n = 2) %>%
+  head(n = 10)
+```
+
+
+
+```{r}
+##### importar datos
+text_petro <- unlist(c(read_csv("discurso_onu_petro.txt", col_names = FALSE, show_col_types = FALSE)))
+names(text_petro) <- NULL
+text_petro <- tibble(line = 1:length(text_petro), text = text_petro)
+```
+
+
+```{r}
+##### tokenizar en skip-gram
+# en este caso cada token es un unigrama o un bigrama regular o un bigrama con espaciamiento
+text_petro %>%
+  unnest_tokens(tbl = ., input = text, output = skipgram, token = "skip_ngrams", n = 2) %>%
+  filter(!is.na(skipgram)) -> text_petro_skip
+dim(text_petro_skip)
+head(text_petro_skip, n = 10)
+```
+
+
+
+
+```{r}
+##### remover unigramas
+suppressMessages(suppressWarnings(library(ngram)))
+# contar palabras en cada skip-gram
+text_petro_skip$num_words <- text_petro_skip$skipgram %>% 
+  map_int(.f = ~ wordcount(.x))
+head(text_petro_skip, n = 10)
+# remover unigramas
+text_petro_skip %<>% 
+  filter(num_words == 2) %>% 
+  select(-num_words)
+dim(text_petro_skip)
+head(text_petro_skip, n = 10)
+```
+
+
+
+```{r}
+##### omitir stop words
+text_petro_skip %>%
+  separate(skipgram, c("word1", "word2"), sep = " ") %>%
+  filter(!grepl(pattern = '[0-9]', x = word1)) %>%
+  filter(!grepl(pattern = '[0-9]', x = word2)) %>%
+  filter(!word1 %in% stop_words_es$word) %>%
+  filter(!word2 %in% stop_words_es$word) %>%
+  mutate(word1 = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word1)) %>%
+  mutate(word2 = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word2)) %>%
+  filter(!is.na(word1)) %>% 
+  filter(!is.na(word2)) %>%
+  count(word1, word2, sort = TRUE) %>%
+  rename(weight = n) -> text_petro_skip_counts
+dim(text_petro_skip_counts)
+head(text_petro_skip_counts, n = 10)
+```
+
+
+
+```{r, fig.width=12, fig.height=6, fig.align='center'}
+##### definir una red a partir de la frecuencia (weight) de los bigramas
+g <- text_petro_skip_counts %>%
+  filter(weight > 0) %>%
+  graph_from_data_frame(directed = FALSE)
+g <- igraph::simplify(g)  # importante!
+# grafo inducido por la componente conexa
+V(g)$cluster <- clusters(graph = g)$membership
+gcc <- induced_subgraph(graph = g, vids = which(V(g)$cluster == which.max(clusters(graph = g)$csize)))
+par(mfrow = c(1,2), mar = c(1,1,2,1), mgp = c(1,1,1))
+# viz 1
+set.seed(123)
+plot(gcc, layout = layout_with_fr, vertex.color = 1, vertex.frame.color = 1, vertex.size = 3, vertex.label = NA)
+# viz 2
+set.seed(123)
+plot(gcc, layout = layout_with_fr, vertex.color = adjustcolor('darkolivegreen4', 0.1), vertex.frame.color = 'darkolivegreen4', vertex.size = 2*strength(gcc), vertex.label = NA)
+title(main = "Componente conexa", outer = T, line = -1)
+```
+
+# Comparación
+
+Discursos de la ONU. 
+
+Skip-grams.
+
+Componente conexa de la red conformada con umbral 1.
+
+
+## Redes
+
+```{r, echo = F}
+##### importar datos
+text_petro <- suppressWarnings(unlist(c(read_csv("discurso_onu_petro.txt", col_names = FALSE, show_col_types = FALSE))))
+names(text_petro) <- NULL
+text_petro <- tibble(line = 1:length(text_petro), text = text_petro)
+##### tokenizar en skip-gram
+text_petro %>%
+  unnest_tokens(tbl = ., input = text, output = skipgram, token = "skip_ngrams", n = 2) %>%
+  filter(!is.na(skipgram)) -> text_petro_skip
+##### remover unigramas
+text_petro_skip$num_words <- text_petro_skip$skipgram %>% 
+  map_int(.f = ~ wordcount(.x))
+text_petro_skip %<>% 
+  filter(num_words == 2) %>% 
+  select(-num_words)
+##### omitir stop words
+text_petro_skip %>%
+  separate(skipgram, c("word1", "word2"), sep = " ") %>%
+  filter(!grepl(pattern = '[0-9]', x = word1)) %>%
+  filter(!grepl(pattern = '[0-9]', x = word2)) %>%
+  filter(!word1 %in% stop_words_es$word) %>%
+  filter(!word2 %in% stop_words_es$word) %>%
+  mutate(word1 = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word1)) %>%
+  mutate(word2 = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word2)) %>%
+  filter(!is.na(word1)) %>% 
+  filter(!is.na(word2)) %>%
+  count(word1, word2, sort = TRUE) %>%
+  rename(weight = n) -> text_petro_skip_counts
+##### definir una red a partir de la frecuencia (weight) de los bigramas
+g <- text_petro_skip_counts %>%
+  filter(weight > 0) %>%
+  graph_from_data_frame(directed = FALSE)
+g <- igraph::simplify(g)
+# grafo inducido por la componente conexa
+V(g)$cluster <- clusters(graph = g)$membership
+gcc_petro <- induced_subgraph(graph = g, vids = which(V(g)$cluster == which.max(clusters(graph = g)$csize)))
+
+```
+
+
+
+```{r, echo = F}
+##### importar datos
+text_duque <- suppressWarnings(unlist(c(read_csv("discurso_onu_duque.txt", col_names = FALSE, show_col_types = FALSE))))
+names(text_duque) <- NULL
+text_duque <- tibble(line = 1:length(text_duque), text = text_duque)
+##### tokenizar en skip-gram
+text_duque %>%
+  unnest_tokens(tbl = ., input = text, output = skipgram, token = "skip_ngrams", n = 2) %>%
+  filter(!is.na(skipgram)) -> text_duque_skip
+##### remover unigramas
+text_duque_skip$num_words <- text_duque_skip$skipgram %>% 
+  map_int(.f = ~ wordcount(.x))
+text_duque_skip %<>% 
+  filter(num_words == 2) %>% 
+  select(-num_words)
+##### omitir stop words
+text_duque_skip %>%
+  separate(skipgram, c("word1", "word2"), sep = " ") %>%
+  filter(!grepl(pattern = '[0-9]', x = word1)) %>%
+  filter(!grepl(pattern = '[0-9]', x = word2)) %>%
+  filter(!word1 %in% stop_words_es$word) %>%
+  filter(!word2 %in% stop_words_es$word) %>%
+  mutate(word1 = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word1)) %>%
+  mutate(word2 = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word2)) %>%
+  filter(!is.na(word1)) %>% 
+  filter(!is.na(word2)) %>%
+  count(word1, word2, sort = TRUE) %>%
+  rename(weight = n) -> text_duque_skip_counts
+##### definir una red a partir de la frecuencia (weight) de los bigramas
+g <- text_duque_skip_counts %>%
+  filter(weight > 0) %>%
+  graph_from_data_frame(directed = FALSE)
+g <- igraph::simplify(g)
+# grafo inducido por la componente conexa
+V(g)$cluster <- clusters(graph = g)$membership
+gcc_duque <- induced_subgraph(graph = g, vids = which(V(g)$cluster == which.max(clusters(graph = g)$csize)))
+```
+
+
+
+```{r, fig.width=12, fig.height=6, fig.align='center', echo = F}
+par(mfrow = c(1,2), mar = c(1,1,2,1), mgp = c(1,1,1))
+# viz 1
+set.seed(123)
+plot(gcc_petro, layout = layout_with_kk, vertex.color = adjustcolor('darkolivegreen4', 0.1), vertex.frame.color = 'darkolivegreen4', vertex.size = 1.6*strength(gcc_petro), vertex.label = NA, main = "Petro")
+# viz 2
+set.seed(123)
+plot(gcc_duque, layout = layout_with_kk, vertex.color = adjustcolor('blue4', 0.1), vertex.frame.color = 'blue4', vertex.size = 1.6*strength(gcc_duque), vertex.label = NA, main = "Duque")
+```
+
+
+```{r, echo = F}
+tab <- cbind(
+  c(mean_distance(gcc_petro), mean(degree(gcc_petro)), sd(degree(gcc_petro)), clique.number(gcc_petro), edge_density(gcc_petro), transitivity(gcc_petro), assortativity_degree(gcc_petro)),
+  c(mean_distance(gcc_duque), mean(degree(gcc_duque)), sd(degree(gcc_duque)), clique.number(gcc_duque), edge_density(gcc_duque), transitivity(gcc_duque), assortativity_degree(gcc_duque))
+)
+rownames(tab) <- c("Dist. media","Grado media","Grado desviación","Número clan","Densidad","Transitividad","Asortatividad")
+colnames(tab) <- c("Petro","Duque")
+round(tab, 4)
+```
+
+
+
+## Paralabras más importantes
+
+### Petro: Top 10 {-}
+
+```{r, echo = F}
+centralidad_petro <- tibble(word = V(gcc_petro)$name, eigen = eigen_centrality(gcc_petro, scale = T)$vector)
+centralidad_petro %>%
+  arrange(desc(eigen)) %>%
+  head(n = 10)
+```
+
+
+### Duque: Top 10 {-}
+
+```{r, echo = F}
+centralidad_duque <- tibble(word = V(gcc_duque)$name, eigen = eigen_centrality(gcc_duque, scale = T)$vector)
+centralidad_duque %>%
+  arrange(desc(eigen)) %>%
+  head(n = 10)
+```
+
+
+
+## Agrupamiento
+
+
+```{r, echo = F}
+kc_petro <- igraph::cluster_fast_greedy(gcc_petro)
+kc_duque <- igraph::cluster_fast_greedy(gcc_duque)
+tab <- cbind(
+  c(length(kc_petro), min(sizes(kc_petro)), max(sizes(kc_petro))),
+  c(length(kc_duque), min(sizes(kc_duque)), max(sizes(kc_duque)))
+)
+rownames(tab) <- c("Tamaño partición", "Tamaño grupo menor", "Tamaño grupo mayor")
+colnames(tab) <- c("Petro","Duque")
+round(tab, 4)                                     
+```
+
+```{r, fig.width=12, fig.height=6, fig.align='center', echo = F}
+suppressMessages(suppressWarnings(library(RColorBrewer)))
+cols <- c(brewer.pal(9,"Set1")[1:9],brewer.pal(8,"Set2")[1:7],brewer.pal(8,"Set2")[1:7],brewer.pal(12,"Set3")[1:3])
+par(mfrow = c(1,2), mar = c(1,1,2,1), mgp = c(1,1,1))
+# viz 1
+set.seed(123)
+plot(gcc_petro, layout = layout_with_kk, vertex.color = adjustcolor(cols[kc_petro$membership], 0.1), vertex.frame.color = cols[kc_petro$membership], vertex.size = 1.6*strength(gcc_petro), vertex.label = NA, main = "Petro")
+# viz 2
+set.seed(123)
+plot(gcc_duque, layout = layout_with_kk, vertex.color = adjustcolor(cols[kc_duque$membership], 0.1), vertex.frame.color = cols[kc_duque$membership], vertex.size = 1.6*strength(gcc_duque), vertex.label = NA, main = "Duque")
+```
+
+### Petro: Top 5 grupo mayor {-}
+
+```{r, echo=F}
+V(gcc_petro)$membership <- kc_petro$membership
+grupos_petro <- tibble(word = V(gcc_petro) %>% names(), cluster = V(gcc_petro)$membership, eigen = eigen_centrality(gcc_petro, scale = T)$vector)
+grupos_petro %>%
+  filter(cluster == which.max(table(kc_petro$membership))) %>%
+  arrange(desc(eigen)) %>%
+  head(n = 5)
+```
+
+```{r, echo=F}
+V(gcc_duque)$membership <- kc_duque$membership
+grupos_duque <- tibble(word = V(gcc_duque) %>% names(), cluster = V(gcc_duque)$membership, eigen = eigen_centrality(gcc_duque, scale = T)$vector)
+grupos_duque %>%
+  filter(cluster == which.max(table(kc_duque$membership))) %>%
+  arrange(desc(eigen)) %>%
+  head(n = 5)
+```
+
+
+# Referencias
+
+
+https://juanitorduz.github.io/text-mining-networks-and-visualization-plebiscito-tweets/
+
+https://www.jorgelopezperez.com/posts/analisis-de-texto-con-r-jugando-un-poco-con-tidytext/
+
+```{r, eval = TRUE, echo=FALSE, out.width="25%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("silgebookcover.png")
+```
+
+```{r, eval = TRUE, echo=FALSE, out.width="25%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("KCbookcover1.jpg")
+```

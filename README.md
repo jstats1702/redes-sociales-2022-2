@@ -31,9 +31,9 @@ Materiales del curso de **Análisis Estadístico de Redes Sociales** ofreciendo 
 - discurso_onu_duque.txt
 - negative_words_es.txt
 - positive_words_es.txt
-- stop_words_spanish
-- discurso_posesion_petro
-- discurso_posesion_duque
+- stop_words_spanish.txt
+- discurso_posesion_petro.txt
+- discurso_posesion_duque.txt
 
 
 

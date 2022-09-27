@@ -11,6 +11,7 @@ Materiales del curso de **Análisis Estadístico de Redes Sociales** ofreciendo 
 5. Caracterización de la conectividad.
 6. Agrupamiento.
 7. Asortatividad.
+8. Relaciones entre palabras.
 
 ## Talleres
 

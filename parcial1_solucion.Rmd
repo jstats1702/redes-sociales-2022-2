@@ -1,0 +1,467 @@
+---
+title: "Transacciones en el mercado de futuros de gas natural en NYMEX"
+author: 
+- Juan Sosa PhD
+- Webpage https://sites.google.com/view/juansosa/ 
+- YouTube https://www.youtube.com/c/JuanSosa1702 
+- GitHub  https://github.com/jstats1702 
+- Rpubs   https://rpubs.com/jstats1702
+date: ""
+output:
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+
+# Introducción {-}
+
+
+Considere el conjunto de datos dado en el archivo `traders.RData` (`139 KB`). Este archivo contiene un arreglo de dimensión $T\times I \times I$ que almacena los datos relaciones de $I$ comerciantes (*traders*) a lo largo de $T$ semanas. Específicamente, este conjunto de datos está constituido por $T=201$ redes binarias dirigidas de orden $I=71$  asociadas con las transacciones en el mercado de futuros de gas natural en la Bolsa Mercantil de Nueva York (NYMEX, por sus siglas in inglés) durante el período de enero de 2005 a diciembre de 2008. Para cada semana se estableció un vínculo entre el comerciante A y el comerciante B si había al menos una transacción durante esa semana en la que A era el vendedor y B el comprador. Para más detalles ver por por ejemplo Betancourt et al. (2017) y Betancourt et al. (2018).
+
+
+Los futuros de gas natural se negociaron sólo a través de las operaciones tradicionales a gritos hasta el 5 de septiembre de 2006 (semana 83). Después de esta fecha, se introdujo una plataforma de negociación electrónica. El objetivo de este caso de estudio consiste en investigar si hubo un cambio estructural relevante del mercado del gas natural debido al establecimiento de la plataforma electrónica como método alternativo de negociación.
+
+
+```{r}
+# paquetes
+suppressMessages(suppressWarnings(library(igraph)))
+suppressMessages(suppressWarnings(library(RColorBrewer)))
+```
+
+
+```{r}
+# datos
+load("traders.RData")
+dim(Y71)
+```
+
+```{r}
+# ti : numero de tiempos 
+(ti <- dim(Y71)[1])
+# I  : numero de comerciantes
+(I <- dim(Y71)[2])
+```
+
+
+
+## Descripción {-}
+
+Para cada red en cada semana, calcular la densidad, el coeficiente de agrupamiento, la asortatividad, la reciprocidad, la distancia geodésica promedio, el tamaño de la componente gigante, el grado de salida promedio, y el grado de entrada promedio. 
+
+Representar cada una de las series de tiempo resultantes, incluyendo una línea vertical en la semana 83, una línea horizontal en la mediana de los valores de la serie *antes* de la semana 83 (inclusive), y otra línea horizontal en la mediana de los valores de la serie *después de la semana 83.
+
+En cada caso aplicar la prueba de Mann-Whitney para comparar los valores de la serie *antes* de la semana 83 (inclusive) con los valores de la serie *después* de la semana 83. Presentar los resultados por medio de una tabla.
+
+**Solución:**
+
+```{r}
+# estadisticos
+den    <- NULL
+cc     <- NULL
+assor  <- NULL
+rec    <- NULL
+geo    <- NULL
+mcs    <- NULL
+meanod <- NULL
+meanid <- NULL
+for (i in 1:ti) {
+  g <- igraph::graph_from_adjacency_matrix(adjmatrix = Y71[i,,], mode = "directed")
+  den   [i] <- igraph::edge_density(graph = g, loops = F)
+  cc    [i] <- igraph::transitivity(graph = g, type = "global")  
+  assor [i] <- igraph::assortativity_degree(graph = g, directed = T)
+  rec   [i] <- igraph::reciprocity(graph = g, ignore.loops = T, mode = "default")
+  geo   [i] <- igraph::mean_distance(graph = g, directed = T, unconnected = T)
+  mcs   [i] <- max(sapply(igraph::decompose(g), igraph::vcount))/igraph::vcount(g)
+  meanod[i] <- mean(igraph::degree(graph = g, mode = "out"))
+  meanid[i] <- mean(igraph::degree(graph = g, mode = "in" ))
+  rm(g)
+}
+```
+
+
+```{r, fig.width=8, fig.height=12, fig.align='center'}
+# viz
+si <- 83
+index1 <- 1:si
+index2 <- (si+1):ti
+stats  <- c("den","cc","assor","rec","geo","mcs","meanod","meanid")
+stats_display <- c("Densidad","Transitividad","Asortatividad","Reciprocidad","Distancia prom.","Tamaño Comp. Gig.","Grado salida prom.", "Grado entrada prom.")
+par(mfrow = c(4,2), mar = c(2.75,2.75,1.5,0.5), mgp = c(1.75,0.75,0))
+for (j in 1:8) {
+  x <- get(x = stats[j])
+  plot(x = 1:ti, y = x, type = "l", xlab = "Semana", ylab = "Estadístico", main = stats_display[j])
+  abline(v = si, col = 1, lty = 2)
+  abline(h = median(x[index1]), col = 2, lty = 3, lwd = 2)
+  abline(h = median(x[index2]), col = 4, lty = 3, lwd = 2)
+  rm(x)
+}
+```
+
+
+```{r}
+# tabla
+medianas <- function(x) { 
+  prueba <- wilcox.test(x = x[index1], y = x[index2])
+  c(median(x[1:si]), median(x[(si+1):ti]), prueba$statistic, prueba$p.value)
+}
+tab <- rbind(medianas(den), medianas(cc),  medianas(assor),  medianas(rec),
+             medianas(geo), medianas(mcs), medianas(meanod), medianas(meanid))
+colnames(tab) <- c("Medida antes","Medida despues", "Estadístico de prueba", "Valor p")
+rownames(tab) <- stats_display
+knitr::kable(x = tab, digits = 3)
+```
+
+## Segmentación {-}
+
+Para cada red en cada semana, llevar a cabo una segmentación de comerciantes por medio de agrupación jerárquica. Calcular en cada caso el número de grupos junto con la modularidad. 
+
+Repetir el numeral anterior teniendo en cuenta estos dos nuevos estadísticos estructurales de agrupamiento.
+
+Simetrizar las redes débilmente ($i\leftrightarrow j$ si $i\rightarrow j$ o $i\leftarrow j$) para llevar a cabo el proceso de agrupamiento.
+
+**Solución:**
+
+```{r}
+# estadisticos
+nc  <- NULL
+mod <- NULL
+for (i in 1:ti) {
+  A <- Y71[i,,]
+  A <- A + t(A)
+  A[A!=0] <- 1
+  g <- igraph::graph_from_adjacency_matrix(adjmatrix = A, mode = "undirected")
+  clust  <- igraph::cluster_fast_greedy(graph = g)
+  nc [i] <- length(table(clust$membership))
+  mod[i] <- igraph::modularity(clust)
+  rm(A, g, clust)
+}
+```
+
+
+```{r, fig.width=8, fig.height=3, fig.align='center'}
+# viz
+par(mfrow = c(1,2), mar = c(2.75,2.75,1.5,0.5), mgp = c(1.75,0.75,0))
+x <- nc
+plot(x = 1:ti, y = x, type = "l", col = 1, ylim = c(1,20), xlab = "Semana", ylab = "No. grupos")
+abline(v = si, col = 1, lty = 2)
+abline(h = median(x[index1]), col = 2, lty = 3, lwd = 2)
+abline(h = median(x[index2]), col = 4, lty = 3, lwd = 2)
+x <- mod
+plot(x = 1:ti, y = x, type = "l", col = 1, ylim = c(0.05,0.3), xlab = "Semana", ylab = "Modularidad")
+abline(v = si, col = 1, lty = 2)
+abline(h = median(x[index1]), col = 2, lty = 3, lwd = 2)
+abline(h = median(x[index2]), col = 4, lty = 3, lwd = 2)
+```
+
+
+```{r}
+# tabla
+tab <- rbind(medianas(nc), medianas(mod))
+colnames(tab) <- c("Med. antes","Med. después", "Est. Prueba", "Valor p")
+rownames(tab) <- c("No. grupos","Modularidad")
+knitr::kable(x = tab, digits = 3)
+```
+
+
+## Transacciones consenso {-}
+
+Sea $\mathbf{Y}_{t}=[y_{i,j,t}]$ la matriz de adyacencia de $I\times I$ asociada con la red de transacciones en el momento $t$, para $t=1,\ldots,T$. Además, sean $\mathbf{Y}_{0}=[y_{i,j}^{0}]$ y $\mathbf{Y}_{1}=[y_{i,j}^{1}]$ las matrices de adyacencia asociadas con las transacciones consenso *antes* de la semana 83 (inclusive) y *después* de la semana 83, respectivamente, donde
+$$
+y_{i,j}^k = 
+\begin{cases}
+	1, & \text{si $\tfrac{1}{T_k}\sum_{t=1}^{T_k} y_{i,j,t} \geq 0.5$,}\\
+	0, & \text{en otro caso,}
+\end{cases}
+$$
+donde $T_k$ es el número de instantes de tiempo del periodo $k$, para $k=0,1$.
+
+Calcular las medidas estructurales del numeral 1. para las redes asociadas con $\mathbf{Y}_{0}=[y_{i,j}^{0}]$ y $\mathbf{Y}_{1}=[y_{i,j}^{1}]$, y presentar los resultados por medio de una tabla.
+
+**Solución:**
+
+
+```{r}
+# red de consenso antes
+A0 <- apply(X = Y71[1:si,,], MARGIN = c(2,3), mean)
+A0[A0 < 0.5] <- 0
+A0[A0 != 0 ] <- 1
+# red de consenso despues
+A1 <- apply(X = Y71[(si+1):ti,,], MARGIN = c(2,3), mean)
+A1[A1 < 0.5] <- 0
+A1[A1 != 0 ] <- 1
+```
+
+
+```{r}
+# grafos 
+g0 <- igraph::graph_from_adjacency_matrix(adjmatrix = A0, mode = "directed")
+g1 <- igraph::graph_from_adjacency_matrix(adjmatrix = A1, mode = "directed")
+# medidas
+medidas <- function(g) {
+  c(igraph::edge_density(graph = g, loops = F),
+    igraph::transitivity(graph = g, type = "global"),
+    igraph::assortativity_degree(graph = g, directed = T),
+    igraph::reciprocity(graph = g, ignore.loops = T, mode = "default"),
+    igraph::mean_distance(graph = g, directed = T, unconnected = T),
+    max(sapply(igraph::decompose(g), igraph::vcount))/igraph::vcount(g),
+    mean(igraph::degree(graph = g, mode = "out")),
+    mean(igraph::degree(graph = g, mode = "in" )))
+}
+```
+
+
+```{r}
+# tabla
+tab <- cbind(medidas(g0), medidas(g1))
+colnames(tab) <- c("Antes","Después")
+rownames(tab) <- stats_display
+knitr::kable(x = tab, digits = 3)
+```
+
+
+## Segmentación y visualización transacciones consenso {-}
+
+Para las redes asociadas con $\mathbf{Y}_{0}=[y_{i,j}^{0}]$ y $\mathbf{Y}_{1}=[y_{i,j}^{1}]$, llevar a cabo una segmentación de comerciantes por medio de agrupación jerárquica.
+
+Hacer una visualización de la componente gigante de estas dos redes con un diseño (*layout*) apropiado, haciendo el tamaño de los vértices proporcionales a la fuerza del vértice (*vertex strength*) y usando colores para representar las comunidades.
+
+Simetrizar las redes débilmente ($i\leftrightarrow j$ si $i\rightarrow j$ o $i\leftarrow j$) para llevar a cabo el proceso de agrupamiento.
+
+**Solución:**
+
+
+```{r}
+# simetrizacion y componente gigante red de consenso antes
+AA <- A0
+AA <- A0 + t(A0)
+AA[AA!=0] <- 1
+gg0 <- igraph::graph_from_adjacency_matrix(adjmatrix = AA, mode = "undirected")
+components <- igraph::clusters(graph = gg0, mode = "weak")
+vids0 <- as.numeric(V(gg0)[components$membership == which.max(components$csize)])
+gg0 <- induced_subgraph(graph = gg0, v = vids0)
+# simetrizacion y componente gigante red de consenso despues
+AA <- A0
+AA <- A1
+AA <- A1 + t(A1)
+AA[AA!=0] <- 1
+gg1 <- igraph::graph_from_adjacency_matrix(adjmatrix = AA, mode = "undirected")
+components <- igraph::clusters(graph = gg1, mode = "weak")
+vids1 <- as.numeric(V(gg1)[components$membership == which.max(components$csize)])
+gg1 <- induced_subgraph(graph = gg1, v = vids1)
+```
+
+
+```{r}
+# segmentacion
+clust0 <- igraph::cluster_fast_greedy(graph = gg0)
+clust1 <- igraph::cluster_fast_greedy(graph = gg1)
+cols <- RColorBrewer::brewer.pal(9,"Set1")
+col0 <- cols[clust0$membership]
+col1 <- cols[clust1$membership]
+str0 <- igraph::strength(graph = gg0, mode = "total")
+str1 <- igraph::strength(graph = gg1, mode = "total")
+```
+
+
+```{r, fig.width=10, fig.height=5, fig.align='center'}
+# viz
+par(mfrow = c(1,2), mar = c(0,0,1,0), mgp = c(0,0,0))
+set.seed(42)
+plot(gg0, layout = layout_with_fr, vertex.label = NA, vertex.color = adjustcolor(col0,0.6), vertex.frame.color = col0, vertex.size = 2*sqrt(str0), edge.color = adjustcolor("black",0.2), main = "Antes")
+set.seed(42)
+plot(gg1, layout = layout_with_fr, vertex.label = NA, vertex.color = adjustcolor(col1,0.6), vertex.frame.color = col1, vertex.size = 2*sqrt(str1), edge.color = adjustcolor("black",0.2), main = "Después")
+```
+
+
+
+## Modelos de grafos aleatorios simple {-}
+
+
+Un modelo de grafo aleatorio simple (*simple random graph model*) hace referencia a un modelo estocástico donde se asume que todas las aristas se forman independientemente unas de las otras, y además, todas las aristas tienen una probabilidad común $\theta\in\Theta=(0,1)$ de formarse. 
+Esto es, las entradas de la matriz de adyacencia $\mathbf{Y}=[y_{i,j}]$ se asumen independientes e idénticamente distribuidas (iid) de acuerdo con una distribución Bernoulli con parámetro $\theta$, i.e.,
+$y_{i,j}\mid\theta\stackrel{\text{iid}}{\sim} \textsf{Bernoulli}(\theta)$, para $i\neq j$,
+y por lo tanto la distribución conjunta de $\mathbf{Y}$ es 
+$$p(\mathbf{Y}\mid\theta) = \prod\theta^{y_{i,j}}(1-\theta)^{1-y_{i,j}}\,,$$
+donde la productoria se hace sobre $\{i,j:i\neq j\}$. Hallar el estimador de máxima verosimilitud (*maximum likelihood estimator*, MLE) de $\theta$.
+
+**Solución:**
+
+
+La log-verosimilitud está dada por
+$$
+\log p(\mathbf{Y}\mid\theta) = s\log\theta + (m-s)\log(1-\theta)\,,
+$$
+
+y por lo tanto,
+$$
+\frac{\textsf{d}}{\textsf{d}\theta}\log p(\mathbf{Y}\mid\theta) = \frac{s}{\theta} - \frac{m-s}{1-\theta}\,.
+$$
+
+donde $s = \sum y_{i,j}=|E|$ es el número de aristas y $m = \sum 1 = n(n-1)$ es el numero de díadas, con $n=|V|$ el número de vértices, del grafo $G=(V,E)$ asociado con la matriz de adyacencia $\mathbf{Y}$.
+
+Igualando a cero y despejando para $\theta$, se obtiene que 
+$$
+\begin{align*}
+\frac{s}{\theta} = \frac{m-s}{1-\theta} \quad\Rightarrow\quad s(1-\theta) = \theta(m - s)
+\quad\Rightarrow\quad s - s\theta = m\theta - s\theta
+\quad\Rightarrow\quad \theta = \frac{s}{m}\,.
+\end{align*}
+$$
+
+Así, el punto crítico correspondiente es
+$$
+\theta_0 = \frac{s}{m} = \frac{\sum y_{i,j}}{n(n-1)} = \frac{|E|}{|V|(|V|-1)}=\textsf{den}(G)\,,
+$$
+donde $\textsf{den}(G)$ es la densidad del grafo $G$.
+
+Finalmente, como
+$$
+\frac{\textsf{d}^2}{\textsf{d}\theta^2}\log p(\mathbf{Y}\mid\theta) = -\frac{s}{\theta^2} - \frac{m-s}{(1-\theta)^2}
+$$
+y
+$$
+\frac{\textsf{d}^2}{\textsf{d}\theta^2}\log p(\mathbf{Y}\mid\theta)\Big|_{\theta = \theta_0} = -\frac{s}{\left(\frac{s}{m}\right)^2} - \frac{m-s}{\left(\frac{m-s}{m}\right)^2} = -\frac{m}{\theta_0}-\frac{m}{1-\theta_0} = -\frac{m}{\theta_0(1-\theta_0)} < 0\,,
+$$
+entonces en virtud del criterio de la segunda derivada se tiene que el punto crítico $\theta_0=\textsf{den}(G)$ corresponde a un máximo local.
+
+En consecuencia, el MLE de $\theta$ es la densidad de $\mathbf{Y}$, i.e., $\hat{\theta}_{\textsf{MLE}} = \textsf{den}(G)$.
+
+
+## Inferencia transacciones consenso {-}
+
+Ajustar modelos de grafos aleatorios simples independientes tanto para antes de la semana 83 (inclusive) como después de la semana 83. 
+
+**Solución:**
+
+De acuerdo con el paradigma Frecuentista, se tiene que asintóticamente ($\textsf{A}$) la distribución muestral de $\hat\theta_{\textsf{MLE}}$ es 
+$\hat\theta_{\textsf{MLE}}\stackrel{\textsf{A}}{\sim}\textsf{N}(\theta,\hat{I}^{-1})$,
+donde
+$$
+\hat{I} = \hat{I}(\hat\theta_{\textsf{MLE}}) = \left[ -\frac{\partial^2}{\partial\theta^2}\log p(\mathbf{Y}\mid\theta) \right]_{\theta = \hat\theta_{\textsf{MLE}}} = \frac{m}{\hat\theta_{\textsf{MLE}}(1-\hat\theta_{\textsf{MLE}})}
+$$
+es la información observada (¡no esperada!) de Fisher. 
+
+Por lo tanto se tiene que:
+- Estimación puntual: $\hat\theta = \hat\theta_{\text{MLE}}$.
+- Coeficiente de variación:
+$$
+\textsf{CV}(\hat\theta) =\left|\frac{\textsf{DE}(\hat\theta_{\text{MLE}})}{\hat\theta_{\text{MLE}}}\right|
+$$
+donde $\textsf{DE}(\hat\theta_{\text{MLE}})=\sqrt{\hat{I}^{-1}(\hat\theta_{\text{MLE}})}$.
+- Intervalo de confianza al 95\%:
+$$
+\hat\theta_{\text{MLE}}\pm z_{0.975}\sqrt{\hat{I}^{-1}(\hat\theta_{\text{MLE}})}
+$$
+donde $z_{97.5}$ es el percentil 97.5 de la distribución Normal estándar.
+
+```{r}
+# inferencia red de consenso antes
+theta0 <- igraph::edge_density(graph = g0, loops = F)
+io0 <- (I*(I-1))/(theta0*(1 - theta0))
+cv0 <- 100*sqrt(1/io0)/theta0
+ic0 <- theta0 + c(-1,1)*qnorm(p = 0.975)*sqrt(1/io0)
+# inferencia red de consenso despues
+theta1 <- igraph::edge_density(graph = g1, loops = F)
+io1 <- (I*(I-1))/(theta1*(1 - theta1))
+cv1 <- 100*sqrt(1/io1)/theta1
+ic1 <- theta1 + c(-1,1)*qnorm(p = 0.975)*sqrt(1/io1)
+# tabla
+tab <- rbind(c(theta0, cv0, ic0), c(theta1, cv1, ic1))
+colnames(tab) <- c("Estimación de θ","CV(%)","Lím. Inf. IC95%","Lím. Sup. IC95%")
+rownames(tab) <- c("Antes","Después")
+knitr::kable(x = tab, digits = 3)
+```
+
+
+## Inferencia a través del tiempo {-}
+
+Ajustar modelos de grafos aleatorios simples independientes para cada red $\mathbf{Y}_t$, con $t=1,\ldots,T$. 
+Realizar un solo gráfico donde se desplieguen simultáneamente la estimación puntual y los intervalos de confianza al 95\% (línea gruesa) y 99\% (línea delgada) de cada $\theta$ para todas las semanas de observación.
+
+**Solución:**
+
+```{r}
+# estimacion e intervalos de confianza al 95% y 99%
+m <- I*(I-1)
+THETA <- NULL
+IC95  <- NULL
+IC99  <- NULL
+for (i in 1:ti) {
+  THETA[i] <- theta <- sum(Y71[i,,])/m
+  IC95 <- rbind(IC95, theta + c(-1,1)*qnorm(p = 0.975)*sqrt((theta*(1 - theta))/m))
+  IC99 <- rbind(IC99, theta + c(-1,1)*qnorm(p = 0.995)*sqrt((theta*(1 - theta))/m))
+  rm(theta)
+}
+```
+
+
+```{r, fig.width=10, fig.height=5, fig.align='center'}
+# viz
+par(mfrow = c(1,1), mar = c(2.75,2.75,1.5,0.5), mgp = c(1.75,0.75,0))
+plot(x = 1:ti, y = THETA, type = "l", ylim = range(IC99), xlab = "Semana", ylab = expression(theta), main = "")
+abline(v = si, col = 1, lty = 2)
+lines(x = 1:ti, y = IC95[,1], col = 2, lwd = 1)
+lines(x = 1:ti, y = IC95[,2], col = 2, lwd = 1)
+lines(x = 1:ti, y = IC99[,1], col = 4, lwd = 1)
+lines(x = 1:ti, y = IC99[,2], col = 4, lwd = 1)
+legend("topleft", legend = c("Estimación","IC 95%", "IC 99%"), col = c(1,2,4), lty = 1, lwd = 2, bty = "n")
+```
+
+
+## Bondad de ajuste {-}
+
+Tanto para antes de la semana 83 (inclusive) como después de la semana 83, simular $B=10000$ redes de consenso $\mathbf{Y}_k^{(1)},\ldots,\mathbf{Y}_k^{(B)}$ utilizando el modelo de grafo aleatorio estimado, para $k=0,1$. Para cada red simulada, calcular la densidad junto con la transitividad, y comparar gráficamente la distribución empírica de estas estadísticas con los respectivos valores observados. 
+
+**Solución:**
+
+```{r}
+# estimacion
+theta0 <- sum(A0)/m
+theta1 <- sum(A1)/m
+# bondad de ajuste
+m <- I*(I-1)
+B <- 10000
+den0 <- NULL
+den1 <- NULL
+set.seed(42)
+for (b in 1:B) {
+  den0[b] <- sum(rbinom(n = m, size = 1, prob = theta0))/m
+  den1[b] <- sum(rbinom(n = m, size = 1, prob = theta1))/m
+}
+```
+
+
+```{r, fig.width=8, fig.height=4, fig.align='center'}
+# viz
+par(mfrow = c(1,2), mar = c(2.75,2.75,1.5,0.5), mgp = c(1.75,0.75,0))
+hist(x = den0, freq = F, col = "lightgray", border = "lightgray", xlab = "Densidad de la red", ylab = "Densidad", main = "Antes")
+abline(v = theta0, lwd = 2, col = 2)
+hist(x = den1, freq = F, col = "lightgray", border = "lightgray", xlab = "Densidad de la red", ylab = "Densidad", main = "Después")
+abline(v = theta1, lwd = 2, col = 4)
+```
+
+
+```{r}
+# valores ppp
+round(mean(den0 > theta0), 4)
+round(mean(den1 > theta1), 4)
+```
+
+
+
+# Referencias {-}
+
+Betancourt, B., Rodríguez, A., and Boyd, N. (2017). Bayesian fused lasso regression for dynamic
+binary networks. Journal of Computational and Graphical Statistics, 26(4):840–850.
+
+Betancourt, B., Rodríguez, A., and Boyd, N. (2018). Investigating competition in financial markets: a
+sparse autologistic model for dynamic network data. Journal of Applied Statistics, 45(7):1157–1172.

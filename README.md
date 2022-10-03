@@ -12,6 +12,8 @@ Materiales del curso de **Análisis Estadístico de Redes Sociales** ofreciendo 
 6. Agrupamiento.
 7. Asortatividad.
 8. Relaciones entre palabras.
+9. Introducción a los modelos estadísticos para redes sociales.
+10. Modelo de grafos aleatorios generalizado.
 
 ## Talleres
 
@@ -27,6 +29,7 @@ Materiales del curso de **Análisis Estadístico de Redes Sociales** ofreciendo 
 - caltech.txt
 - comtrade.RData
 - krackhardt21c.txt
+- salter543_data.RData
 - discurso_onu_petro.txt
 - discurso_onu_duque.txt
 - negative_words_es.txt

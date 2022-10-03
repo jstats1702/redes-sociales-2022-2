@@ -1,0 +1,590 @@
+---
+title: "Modelo de grafos aleatorios generalizado"
+author: 
+- Juan Sosa PhD
+- Webpage https://sites.google.com/view/juansosa/ 
+- YouTube https://www.youtube.com/c/JuanSosa1702 
+- GitHub  https://github.com/jstats1702 
+- Rpubs   https://rpubs.com/jstats1702
+date: ""
+output:
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Introducción
+
+El **modelo de Erdös–Rényi** se puede generalizar como sigue:
+
+1. Definir la colección de todos los grafos con un **orden fijo** $n$ que **posean una característica determinada**.
+2. Asignar la **misma probabilidad** a cada uno de los grafos de esta colección.
+
+¿Cuál es esa característica en el modelo de Erdös–Rényi?
+
+Definición **implícita** del modelo.
+
+Una característica popular corresponde a una **secuencia de grado fija** $d_{1},\ldots,d_{n}$ (en forma ordenada).
+
+El grado medio en este caso es $\bar{d} = 2s/n$, y por lo tanto, $\sum_{i=1}^n d_i = 2s$, donde $s=\sum_{i<j} y_{i,j}$ es número de aristas.
+
+Los grafos de la colección con un **orden fijo** $n$ y una **secuencia de grado fija** $d_{(1)},\ldots,d_{(n)}$ tienen el **mismo número de aristas** $s$. Por lo tanto, esta colección está **contenida estrictamente** dentro de la colección de grafos generados a partir del modelo de Erdös–Rényi.
+
+Todas las demás características **varían libremente** en la medida que lo permita la secuencia de grados elegida.
+
+Las rutinas tipo `sample_[...]` en `igraph` ofrecen más alternativas para generar modelos de grafos aleatorios generalizados.
+
+
+# Ejemplo: Método vl
+
+```{r, fig.width=12, fig.height=6, fig.align='center'}
+suppressMessages(suppressWarnings(library(igraph)))
+# secuencia de grado
+sec <- c(2, 2, 2, 2, 4, 3, 3, 3, 3, 6)
+# simulacion
+set.seed(42)
+g1 <- sample_degseq(out.deg = sec, method = "vl")
+g2 <- sample_degseq(out.deg = sec, method = "vl")
+# vl method by Fabien Viger and Matthieu Latapy
+# generates undirected, connected simple graphs 
+# grafico
+par(mfrow = c(1,2))
+igraph_options(vertex.size = 12, vertex.frame.color = 1, edge.color = "darkgray")
+set.seed(42)
+plot(g1, layout = layout_with_kk)
+set.seed(42)
+plot(g2, layout = layout_with_kk)
+# se satisface la condicion?
+all(degree(g1) == sec)
+all(degree(g2) == sec)
+# isomorfos?
+isomorphic(g1, g2)
+# numero de aristas
+c(sum(sec), 2*ecount(g1), 2*ecount(g2))
+# grado medio
+c(mean(sec), 2*ecount(g1)/vcount(g1), 2*ecount(g2)/vcount(g2))
+```
+
+
+
+
+## Ejemplo: Distribución de grado de la ley de potencias 
+
+La **distribución de la ley de potencias** (*power law distribution*) señala que la distribución del grado $d$ es de la forma
+$$
+f_d = \mathrm{c}\,d^{-\alpha}\,,\qquad \mathrm{c}>0\,,\qquad \alpha>1\,,
+$$
+lo que en escala log corresponde a
+$$
+\log f_d = \log \mathrm{c} - \alpha\log d\,.
+$$
+$\mathrm{c}$ se denomina constante de normalización y $\alpha$ exponente de la ley de potencias (similar a la **distribución de Pareto**).
+
+
+```{r, fig.width=6, fig.height=6, fig.align='center'}
+# distribucion de grado de la ley de potencias (power law degree distribution)
+set.seed(42)
+sec <- sample(x = 1:100, size = 100, replace = TRUE, prob = (1:100)^-2)  # c = 1 y alpha = 2
+table(sec)
+sum(sec)
+# distribucion de grado exponencial (exponential degree distribution)
+# sec <- sample(x = 1:100, size = 100, replace = TRUE, prob = exp(-0.5*(1:100)))
+# correccion si la suma de la secuencia de grado es impar 
+if (sum(sec) %% 2 != 0) sec[1] <- sec[1] + 1
+# simulacion
+g <- sample_degseq(out.deg = sec, method = "vl")
+# se satisface la condicion?
+all(degree(g) == sec)
+# grafico
+igraph_options(vertex.label = NA, vertex.size = 6, edge.color = "darkgray", vertex.frame.color = 1)
+set.seed(42)
+plot(g, layout = layout_with_kk)
+```
+```{r, fig.width=8, fig.height=4, fig.align='center'}
+# grado
+d <- degree(g)
+# distribucion de grado
+dd <- degree_distribution(g)
+# grafico
+par(mfrow = c(1,2))
+plot(NA, NA, type = "n", xlim = c(0,50), ylim = c(0,0.17), xlab = "Grado", ylab = "Densidad", main = "Distribución de grado")
+hist(d, freq = F, border = 4, col = adjustcolor(4, 0.3), add = T)
+ind <- dd != 0
+plot(log((0:max(d))[ind]), log(dd[ind]), pch = 16, cex = 1.1, col = adjustcolor(4, 0.8), xlab = "Log-grado", ylab = "Log-densidad", main = "Distribución de grado (log-log)")
+abline(a = log(1), b = -2, col = adjustcolor("gray", 0.7), lwd = 2)
+```
+
+# Ejemplo: Zachary
+
+Los nodos representan a los **miembros de un club de karate** observado durante un periodo de 2 años.
+
+Los enlaces indican interacciones sociales entre los miembros del club. 
+
+Este conjunto de datos es importante desde un punto de vista científico, dada la fragmentación que sufrió el club en dos clubes diferentes debido a una disputa entre el director y el administrador.
+
+***Zachary, W. W. (1977). An information flow model for conflict and fission in small groups. Journal of anthropological research, 33(4), 452-473.***
+
+Disponible en el paquete `igraphdata` de R.
+
+https://rdrr.io/cran/igraphdata/man/karate.html
+
+https://github.com/igraph/igraphdata
+
+
+```{r, fig.height = 6, fig.width = 12, fig.align='center'}
+# datos
+suppressMessages(suppressWarnings(library(sand)))
+data(karate)
+# visualizacion
+par(mfrow = c(1,2))
+set.seed(42)
+l = layout_with_fr(karate)
+plot(karate, layout = l, vertex.size = 14, edge.color = "black", vertex.frame.color = "black", vertex.label.color = "black", main = "Zachary")
+corrplot::corrplot(corr = as.matrix(get.adjacency(graph = karate, names = F)), col.lim = c(0,1), method = "color", tl.col = "black", addgrid.col = "gray", cl.pos = "r", col = colorRampPalette(c("blue","white","black"))(200))
+```
+
+
+```{r}
+suppressMessages(suppressWarnings(library(igraph)))
+# orden
+n <- vcount(karate)
+n
+# tamaño
+m <- ecount(karate)
+m
+# densidad
+den <- edge_density(karate)
+den
+m/(n*(n-1)/2)
+# distribucion de grado
+sec <- degree(karate)
+mean(sec)
+2*m/n
+```
+
+
+```{r}
+# probabilidades de interaccion
+# Modelo 1: Modelo de Erdos-Renyi
+# Modelo 2: Modelo de grafos aleatorios generalizado
+B <- 1000
+IP1 <- matrix(data = 0, nrow = n, ncol = n)
+IP2 <- matrix(data = 0, nrow = n, ncol = n)
+for (b in 1:B) {
+  IP1 <- IP1 + as.matrix(get.adjacency(sample_gnm(n = n, m = m, directed = F, loops = F)))/B
+  IP2 <- IP2 + as.matrix(get.adjacency(sample_degseq(out.deg = sec, method = "vl")))/B
+}
+```
+
+
+
+```{r, fig.height = 6, fig.width = 12, fig.align='center'}
+# viz
+par(mfrow = c(1,2))
+Y <- as.matrix(get.adjacency(graph = karate, names = F))
+corrplot::corrplot(corr = IP1, col.lim = c(0,1), method = "color", tl.pos = "n", addgrid.col = "gray", cl.pos = "r", col = colorRampPalette(c("blue","white","red"))(200))
+title(sub = "M. Erdos-Renyi")
+corrplot::corrplot(corr = IP2, col.lim = c(0,1), method = "color", tl.pos = "n", addgrid.col = "gray", cl.pos = "r")
+title(sub = "M. Grafos Aleatorio Generalizado")
+```
+
+
+
+
+# Ejemplo: Zachary (cont.)
+
+```{r}
+# simulacion
+# Modelo 1: Modelo de Erdos-Renyi
+# Modelo 2: Modelo de grafos aleatorios generalizado
+B <- 1000
+dens <- NULL
+tran <- NULL
+asso <- NULL
+diam <- NULL
+set.seed(123)
+for (b in 1:B) {
+  # modelos
+  g1 <- sample_gnm(n = n, m = m, directed = F, loops = F)  # M1
+  g2 <- sample_degseq(out.deg = sec, method = "vl")        # M2
+  # estadisticos estructurales
+  dens <- rbind(dens, c(edge_density(g1), edge_density(g2)))
+  tran <- rbind(tran, c(transitivity(g1), transitivity(g2)))
+  asso <- rbind(asso, c(assortativity_degree(g1), assortativity_degree(g2)))
+  diam <- rbind(diam, c(diameter(g1), diameter(g2)))
+}
+head(dens)  # constante!
+head(tran)
+head(asso)
+head(diam)
+```
+
+
+
+```{r, fig.width=8, fig.height=4, fig.align='center'}
+# valores observados
+t0 <- transitivity(karate)
+t0
+par(mfrow = c(1,2), mar = c(2.75,2.75,1.5,0.5), mgp = c(1.7,0.7,0))
+# transitividad
+hist(tran[,1], freq = F, col = 2, border = 2, xlim = c(0,0.4), ylim = c(0,20), xlab = "Transitividad", ylab = "Densidad", main = "M. Erdos-Renyi")
+abline(v = t0, col = "gray", lwd = 3)
+hist(tran[,2], freq = F, col = 4, border = 4, xlim = c(0,0.4), ylim = c(0,20), xlab = "Transitividad", ylab = "Densidad", main = "M. Grafos Aleatorio Generalizado")
+abline(v = t0, col = "gray", lwd = 3)
+```
+
+```{r, fig.width=8, fig.height=4, fig.align='center'}
+# valores observados
+t0 <- assortativity_degree(karate)
+t0
+par(mfrow = c(1,2), mar = c(2.75,2.75,1.5,0.5), mgp = c(1.7,0.7,0))
+# transitividad
+hist(asso[,1], freq = F, col = 2, border = 2, xlim = c(-0.6,0.3), ylim = c(0,10), xlab = "Asortatividad", ylab = "Densidad", main = "M. Erdos-Renyi")
+abline(v = t0, col = "gray", lwd = 3)
+hist(asso[,2], freq = F, col = 4, border = 4, xlim = c(-0.6,0.3), ylim = c(0,10), xlab = "Asortatividad", ylab = "Densidad", main = "M. Grafos Aleatorio Generalizado")
+abline(v = t0, col = "gray", lwd = 3)
+```
+
+
+```{r, fig.width=8, fig.height=4, fig.align='center'}
+# valores observados
+t0 <- diameter(karate)
+t0
+par(mfrow = c(1,2), mar = c(2.75,2.75,1.5,0.5), mgp = c(1.7,0.7,0))
+# diametro
+plot(table(factor(x = diam[,1], levels = 1:10))/B, type = "h", lwd = 3, ylim = c(0,0.8), col = 2, cex.axis = 0.9, xlab = "Diametro", ylab = "Densidad", main = "M. Erdos-Renyi")
+plot(table(factor(x = diam[,2], levels = 1:10))/B, type = "h", lwd = 3, ylim = c(0,0.8), col = 4, cex.axis = 0.9, xlab = "Diametro", ylab = "Densidad", main = "M. Grafos Aleatorio Generalizado")
+```
+
+## Ejemplo: Zachary (cont.)
+
+
+```{r}
+# simulacion
+# Modelo 1: Modelo de Erdos-Renyi
+# Modelo 2: Modelo de grafos aleatorios generalizado
+B <- 1000
+nc <- NULL
+set.seed(123)
+for (b in 1:B) {
+  # modelos
+  g1 <- sample_gnm(n = n, m = m, directed = F, loops = F)  # M1
+  g2 <- sample_degseq(out.deg = sec, method = "vl")        # M2
+  # numero de comunidades
+  nc <- rbind(nc, c(length(cluster_fast_greedy(graph = g1)), length(cluster_fast_greedy(graph = g1))))
+}
+head(nc)
+```
+
+
+```{r, fig.height = 6, fig.width = 6, fig.align='center'}
+# comunidades observadas
+kc <- cluster_fast_greedy(karate)
+set.seed(1)
+plot(x = kc, y = karate, mark.groups = NULL, edge.color = "black", vertex.size = 10, vertex.frame.color = "black", vertex.label = NA)
+```
+
+
+```{r, fig.width=8, fig.height=4, fig.align='center'}
+# valores observados
+par(mfrow = c(1,2), mar = c(2.75,2.75,1.5,0.5), mgp = c(1.7,0.7,0))
+# numero de comunidades
+plot(table(factor(x = nc[,1], levels = 1:10))/B, type = "h", lwd = 3, ylim = c(0,0.5), col = 2, cex.axis = 0.9, xlab = "Comunidades", ylab = "Densidad", main = "M. Erdos-Renyi")
+plot(table(factor(x = nc[,2], levels = 1:10))/B, type = "h", lwd = 3, ylim = c(0,0.5), col = 4, cex.axis = 0.9, xlab = "Comunidades", ylab = "Densidad", main = "M. Grafos Aleatorio Generalizado")
+```
+
+
+
+## Ejemplo: Zachary (cont.)
+
+### Datos {-}
+
+```{r}
+Y <- as.matrix(get.adjacency(graph = karate))
+y <- Y[lower.tri(Y)]
+g <- graph_from_adjacency_matrix(adjmatrix = Y, mode = "undirected")
+is_simple(g)
+is_directed(g)
+```
+
+### Conformación de folds {-}
+
+
+```{r, fig.width=4, fig.height=4, fig.align='center'}
+# orden
+n <- vcount(g)
+n
+# numero de diadas
+M <- n*(n-1)/2
+M
+# numero de folds
+L <- 5
+# conformacion de folds
+set.seed(42)
+fold_index_vec <- sample(x = 1:L, size = M, replace = T)
+fold_index_mat <- matrix(data = 0, nrow = n, ncol = n)
+fold_index_mat[lower.tri(fold_index_mat)] <- fold_index_vec
+# distribucion de folds
+tab <- table(fold_index_vec)
+tab
+# viz de folds a traves de la matriz de adyacencia
+corrplot::corrplot(corr = fold_index_mat/L, col.lim = c(0,1), method = "color", tl.pos = "n", cl.pos = "n")
+# distribucion de enlaces por fold
+y <- Y[lower.tri(Y)]
+tmp <- NULL
+for (l in 1:L)
+  tmp <- rbind(tmp, table(y[fold_index_vec == l])/tab[l])
+round(tmp, 3)
+```
+
+
+### Probabilidades de interacción en cada fold {-}
+
+
+```{r}
+# validacion cruzada
+# para comparar los modelos los folds tienen que ser iguales/comparables
+# Modelo 1: Modelo de Erdos-Renyi
+# Modelo 2: Modelo de grafos aleatorios generalizado
+IP1 <- vector(mode = "list", L)
+IP2 <- vector(mode = "list", L)
+B <- 1000
+set.seed(123)
+for (l in 1:L) {
+  # datos de entrenamiento
+  y_train <- y  
+  y_train[fold_index_vec == l] <- NA
+  Y_train <- matrix(data = 0, nrow = n, ncol = n)
+  Y_train[lower.tri(Y_train)] <- y_train
+  Y_train <- Y_train + t(Y_train)
+  # ------------------------ Modelo 1 ------------------------
+  # ajuste del modelo
+  theta_hat <- mean(y_train, na.rm = T)
+  # predecir
+  n_test <- tab[l]
+  inter_prob <- rep(0, n_test)
+  for (b in 1:B)
+    inter_prob <- inter_prob + rbinom(n = n_test, size = 1, prob = theta_hat)/B
+  IP1[[l]] <- inter_prob
+  # ------------------------ Modelo 2 ------------------------
+  # ajuste del modelo
+  sec <- rowSums(x = Y_train, na.rm = T)
+  # correcciones
+  sec[sec == 0] <- 1
+  if (sum(sec) %% 2 != 0) sec[1] <- sec[1] + 1
+  # predecir
+  n_test <- tab[l]
+  inter_prob <- rep(0, n_test)
+  for (b in 1:B) {
+    YY <- as.matrix(get.adjacency(sample_degseq(out.deg = sec, method = "vl")))
+    yy <- YY[lower.tri(YY)]
+    inter_prob <- inter_prob + yy[fold_index_vec == l]/B
+  }
+  IP2[[l]] <- inter_prob
+}
+```
+
+
+### Curvas ROC {-}
+
+```{r, fig.width=8, fig.height=4, fig.align='center'}
+par(mfrow = c(1,2), mar = c(2.75,2.75,1.5,0.5), mgp = c(1.7,0.7,0))
+# Modelo 1: curvas ROC y AUCs
+IP <- IP1
+aucs <- NULL
+plot(NA, NA, xlim = c(0,1), ylim = c(0,1), xlab = "Tasa Falsos Positivos", ylab = "Tasa verdaderos positivos", main = "M. Erdos Renyi")
+abline(a = 0, b = 1, col = "gray", lwd = 2)
+for (l in 1:L) {
+  # datos de prueba
+  y_test <- y[fold_index_vec == l]
+  # rendimiento
+  pred <- ROCR::prediction(predictions = IP[[l]], labels = y_test)
+  perf <- ROCR::performance(prediction.obj = pred, measure = "tpr", x.measure = "fpr")
+  # ROC
+  lines(x = perf@x.values[[1]], y = perf@y.values[[1]], type = "l", col = 2)
+  # AUC
+  perf <- ROCR::performance(prediction.obj = pred, measure = "auc")
+  aucs[l] <- perf@y.values[[1]]
+}
+text(x = 0.7, y = 0.05, labels = paste0("AUC = ", round(mean(aucs), 4)), cex = 1.5)
+# Modelo 2: curvas ROC y AUCs
+IP <- IP2
+aucs <- NULL
+plot(NA, NA, xlim = c(0,1), ylim = c(0,1), xlab = "Tasa Falsos Positivos", ylab = "Tasa verdaderos positivos", main = "M. Grafos Aleatorio Generalizado")
+abline(a = 0, b = 1, col = "gray", lwd = 2)
+for (l in 1:L) {
+  # datos de prueba
+  y_test <- y[fold_index_vec == l]
+  # rendimiento
+  pred <- ROCR::prediction(predictions = IP[[l]], labels = y_test)
+  perf <- ROCR::performance(prediction.obj = pred, measure = "tpr", x.measure = "fpr")
+  # ROC
+  lines(x = perf@x.values[[1]], y = perf@y.values[[1]], type = "l", col = 4)
+  # AUC
+  perf <- ROCR::performance(prediction.obj = pred, measure = "auc")
+  aucs[l] <- perf@y.values[[1]]
+}
+text(x = 0.7, y = 0.05, labels = paste0("AUC = ", round(mean(aucs), 4)), cex = 1.5)
+```
+
+
+# Ejemplo: Karnataca
+
+***Salter-Townshend, M. & McCormick, T. H. (2017), ‘Latent space models for multiview network data’, The Annals of Applied Statistics 11(3), 1217.***
+
+Relaciones sociales y familiares entre hogares en un aldea específica ubicada en la zona rural del sur de Karnataka, India. 
+
+Para estos datos, $y_{i,j} = 1$ si los hogares $i$ y $j$ tienen están relacionados familiarmente o asisten juntos al templo.
+
+
+
+## Datos {-}
+
+
+
+```{r, echo = F}
+# datos
+suppressMessages(suppressWarnings(library(igraph)))
+load("salter543_data.RData")
+karna <- graph_from_adjacency_matrix(adjmatrix = Ycube, mode = "undirected")
+Y <- as.matrix(get.adjacency(graph = karna, names = F))
+y <- Y[lower.tri(Y)]
+g <- graph_from_adjacency_matrix(adjmatrix = Y, mode = "undirected")
+```
+
+
+
+
+
+
+```{r, fig.height = 6, fig.width = 12, fig.align='center', echo = F}
+# viz
+par(mfrow = c(1,2))
+set.seed(42)
+plot(karna, layout = layout_with_kk, vertex.label = NA, edge.color = "black", vertex.frame.color = "black", vertex.size = 8, main = "Karnataka")
+corrplot::corrplot(corr = Y, col.lim = c(0,1), method = "color", tl.pos = "n", addgrid.col = NA, cl.pos = "r", col = colorRampPalette(c("red","white","black"))(200))
+```
+
+
+
+
+## Validación Cruzada {-}
+
+
+
+```{r, echo = F}
+# orden
+n <- vcount(g)
+# numero de diadas
+M <- n*(n-1)/2
+# numero de folds
+L <- 5
+# conformacion de folds
+set.seed(42)
+fold_index_vec <- sample(x = 1:L, size = M, replace = T)
+fold_index_mat <- matrix(data = 0, nrow = n, ncol = n)
+fold_index_mat[lower.tri(fold_index_mat)] <- fold_index_vec
+# distribucion de folds
+tab <- table(fold_index_vec)
+```
+
+
+
+```{r, echo = F}
+# validacion cruzada
+# para comparar los modelos los folds tienen que ser iguales/comparables
+# Modelo 1: Modelo de Erdos-Renyi
+# Modelo 2: Modelo de grafos aleatorios generalizado
+IP1 <- vector(mode = "list", L)
+IP2 <- vector(mode = "list", L)
+B <- 1000
+set.seed(123)
+for (l in 1:L) {
+  # datos de entrenamiento
+  y_train <- y  
+  y_train[fold_index_vec == l] <- NA
+  Y_train <- matrix(data = 0, nrow = n, ncol = n)
+  Y_train[lower.tri(Y_train)] <- y_train
+  Y_train <- Y_train + t(Y_train)
+  # ------------------------ Modelo 1 ------------------------
+  # ajuste del modelo
+  theta_hat <- mean(y_train, na.rm = T)
+  # predecir
+  n_test <- tab[l]
+  inter_prob <- rep(0, n_test)
+  for (b in 1:B)
+    inter_prob <- inter_prob + rbinom(n = n_test, size = 1, prob = theta_hat)/B
+  IP1[[l]] <- inter_prob
+  # ------------------------ Modelo 2 ------------------------
+  # ajuste del modelo
+  sec <- rowSums(x = Y_train, na.rm = T)
+  # correcciones
+  sec[sec == 0] <- 1
+  if (sum(sec) %% 2 != 0) sec[1] <- sec[1] + 1
+  # predecir
+  n_test <- tab[l]
+  inter_prob <- rep(0, n_test)
+  for (b in 1:B) {
+    YY <- as.matrix(get.adjacency(sample_degseq(out.deg = sec, method = "vl")))
+    yy <- YY[lower.tri(YY)]
+    inter_prob <- inter_prob + yy[fold_index_vec == l]/B
+  }
+  IP2[[l]] <- inter_prob
+}
+```
+
+
+
+```{r, fig.width=8, fig.height=4, fig.align='center', echo = F}
+par(mfrow = c(1,2), mar = c(2.75,2.75,1.5,0.5), mgp = c(1.7,0.7,0))
+# Modelo 1: curvas ROC y AUCs
+IP <- IP1
+aucs <- NULL
+plot(NA, NA, xlim = c(0,1), ylim = c(0,1), xlab = "Tasa Falsos Positivos", ylab = "Tasa verdaderos positivos", main = "M. Erdos Renyi")
+abline(a = 0, b = 1, col = "gray", lwd = 2)
+for (l in 1:L) {
+  # datos de prueba
+  y_test <- y[fold_index_vec == l]
+  # rendimiento
+  pred <- ROCR::prediction(predictions = IP[[l]], labels = y_test)
+  perf <- ROCR::performance(prediction.obj = pred, measure = "tpr", x.measure = "fpr")
+  # ROC
+  lines(x = perf@x.values[[1]], y = perf@y.values[[1]], type = "l", col = 2)
+  # AUC
+  perf <- ROCR::performance(prediction.obj = pred, measure = "auc")
+  aucs[l] <- perf@y.values[[1]]
+}
+text(x = 0.7, y = 0.05, labels = paste0("AUC = ", round(mean(aucs), 4)), cex = 1.5)
+# Modelo 2: curvas ROC y AUCs
+IP <- IP2
+aucs <- NULL
+plot(NA, NA, xlim = c(0,1), ylim = c(0,1), xlab = "Tasa Falsos Positivos", ylab = "Tasa verdaderos positivos", main = "M. Grafos Aleatorio Generalizado")
+abline(a = 0, b = 1, col = "gray", lwd = 2)
+for (l in 1:L) {
+  # datos de prueba
+  y_test <- y[fold_index_vec == l]
+  # rendimiento
+  pred <- ROCR::prediction(predictions = IP[[l]], labels = y_test)
+  perf <- ROCR::performance(prediction.obj = pred, measure = "tpr", x.measure = "fpr")
+  # ROC
+  lines(x = perf@x.values[[1]], y = perf@y.values[[1]], type = "l", col = 4)
+  # AUC
+  perf <- ROCR::performance(prediction.obj = pred, measure = "auc")
+  aucs[l] <- perf@y.values[[1]]
+}
+text(x = 0.7, y = 0.05, labels = paste0("AUC = ", round(mean(aucs), 4)), cex = 1.5)
+```
+
+
+
+# Referencias
+
+```{r, eval = TRUE, echo=FALSE, out.width="25%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("KCbookcover1.jpg")
+```

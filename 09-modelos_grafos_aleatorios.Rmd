@@ -1,0 +1,443 @@
+---
+title: "Introducción a los modelos estadísticos para redes sociales"
+author: 
+- Juan Sosa PhD
+- Webpage https://sites.google.com/view/juansosa/ 
+- YouTube https://www.youtube.com/c/JuanSosa1702 
+- GitHub  https://github.com/jstats1702 
+- Rpubs   https://rpubs.com/jstats1702
+date: ""
+output:
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introducción
+
+Un **modelo estadístico** es una **colección de distribuciones de probabilidad** indexadas por un **parámetro de dimensión finita** desconocido:
+$$
+\mathcal{P} = \{p(\mathbf{Y}\mid\theta):\mathbf{Y}\in\mathcal{Y}\,\,\text{ y }\,\,\theta\in\Theta\}
+$$
+donde:
+
+- $\theta$ es un parámetro desconocido.
+- $\Theta$ es el espacio de parámetros, i.e., el conjunto de todos los valores que puede asumir $\theta$.
+- $\mathbf{Y}$ es una matriz de adyacencia.
+- $\mathcal{Y}$ es el conjunto de todas las posibles matrices de adyacencia.
+- $p(\mathbf{Y}\mid\theta)$ es la distribución probabilística de $\mathbf{Y}\in\mathcal{Y}$ para un valor particular de $\theta$.
+
+Los modelos estadísticos **tienen como objetivo**:
+
+- Investigar el proceso generativo de la red.
+- Caracterizar aspectos locales y estructurales.
+- Evaluar asociaciones entre las variables nodales y relacionales.
+- Imputar relaciones faltantes.
+- Predecir relaciones futuras.
+
+Los modelos estadísticos permiten **cuantificar la incertidumbre** asociada con estos procesos.
+
+La riqueza del modelo se deriva en **cómo especificar** $p(\mathbf{Y}\mid\theta)$:
+
+- Modelo de grafos aleatorios.
+- Modelo de grafos aleatorios generalizado.
+- Modelo de mundo pequeño.
+- Modelo de fijación preferencial.
+- Modelo de grafos aleatorios exponenciales.
+- Modelo de bloques estocásticos.
+- Modelo de espacio latente de distancia.
+- Modelo de espacio latente factorial.
+
+```{r, eval = TRUE, echo=FALSE, out.width="45%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("modelos_box.png")
+```
+
+# Modelo de grafos aleatorios
+
+El término **modelo de grafo aleatorio simple** (*simple random graph model*) o **modelo de grafo aleatorio** (*random graph model*) se usa para referirse a un modelo en el que:
+
+- Las aristas surgen de **manera independiente**.
+- Las aristas tienen una **probabilidad común** de formación $\theta\in\Theta=(0,1)$.
+
+Las entradas de $\mathbf{Y}$ son **independientes e idénticamente distribuidas** (iid) de acuerdo con una distribución Bernoulli con parámetro $\theta$:
+$$
+y_{i,j}\mid\theta\stackrel{\text{iid}}{\sim} \textsf{Bernoulli}(\theta)
+$$
+y por lo tanto
+$$
+p(\mathbf{Y}\mid\theta) = \prod\theta^{y_{i,j}}(1-\theta)^{1-y_{i,j}} = \theta^{\sum y_{i,j}} (1-\theta)^{\sum(1- y_{i,j})}
+$$
+donde la productoria y las sumas se hacen sobre $\{i,j:i\neq j\}$ y $\{i,j:i<j\}$ para redes dirigidas y no dirigidas, respectivamente.
+
+Este modelo se utiliza comúnmente como **punto de referencia** (*baseline*) para determinar si un grafo **satisface o no alguna propiedad** local o estructural. 
+
+## Propiedades
+
+- El grado de cada vértice tiene distribución Binomial con parámetros $n-1$ y $\theta$, donde $n=|V|$ es el orden del grafo.
+- Si $\theta = \frac{k}{n}$ con $k>0$, entonces la distribución del grado es aproximadamente Poisson con media $k$ cuando $n\rightarrow\infty$.
+- Distancias y transitividad bajas.
+- La distribución de $\mathbf{Y}\mid{\textstyle\sum} y_{i,j} = s,\theta$ es uniforme y no depende de $\theta$, i.e., el modelo asigna la misma probabilidad a todos los grafos con un número fijo de vértices $n$ y número fijo de aristas $s$:
+$$
+p(\mathbf{Y}\mid{\textstyle\sum} y_{i,j} = s,\theta) = \frac{p(\mathbf{Y},{\textstyle\sum y_{i,j}} = s\mid\theta)}{p({\textstyle\sum y_{i,j}} = s\mid\theta)} = \frac{1}{\binom{m}{s}}
+$$
+donde $m=|E|$ es el número de diadas sobre el cual se hace la sumatoria. Esta distribución se denomina comúnmente como **modelo de Erdös–Rényi**.
+
+## Ejemplo: Simulación
+
+```{r, fig.width=6, fig.height=6, fig.align='center'}
+suppressMessages(suppressWarnings(library(igraph)))
+# orden
+n <- 100
+k <- 2
+theta <- k/n
+# simulacion (ver tambien sample_gnm)
+set.seed(42)
+g <- sample_gnp(n = n, p = theta, directed = F, loops = F)
+igraph_options(vertex.label = NA, edge.color = "gray40", vertex.color = 1, vertex.frame.color = 1, vertex.size = 6)
+set.seed(42)
+plot(g, layout = layout_with_fr, main = "Grafo aleatorio generado con n = 100 y p = 0.02")
+```
+
+
+```{r, fig.width=6, fig.height=6, fig.align='center'}
+# conectado?
+is_connected(g)
+# frecuencias de componentes
+table(sapply(X = decompose(g), FUN = vcount))
+# distribucion del grado
+table(degree(g))/n
+# distribucion del grado aprox.
+round(dpois(x = 0:6, lambda = k), 3)
+# grado promedio
+mean(degree(g))
+# grado promedio aprox.
+(n-1)*theta
+# distancia promedio
+mean_distance(g)
+# coef. agrupamiento
+transitivity(g)
+```
+
+
+## Ejemplo: Simulación (cont.)
+
+
+```{r, fig.width=6, fig.height=6, fig.align='center'}
+suppressMessages(suppressWarnings(library(igraph)))
+# orden
+n <- 100
+k <- 2
+theta <- k/n
+```
+
+
+```{r}
+# simulacion
+B  <- 1000
+dg <- NULL
+dp <- NULL
+ca <- NULL
+set.seed(42)
+for (b in 1:B) {
+  # grafo
+  g  <- sample_gnp(n = n, p = theta, directed = F, loops = F)
+  # estadisticos
+  dg <- rbind(dg, table(factor(x = degree(g), levels = 0:9))/n)
+  dp[b] <- mean_distance(g)
+  ca[b] <- transitivity(g)
+}
+```
+
+
+```{r, fig.width=8, fig.height=6, fig.align='center'}
+# distribución del grado
+par(mar = c(3,3,1,1), mgp = c(1.75,0.75,0))
+dg_q <- apply(X = dg, MARGIN = 2, FUN = quantile, probs = c(0.025,0.5,0.975))
+plot(NA, NA, xlim = c(0,9), ylim = range(dg_q), xlab = "Grado", ylab = "Densidad")
+abline(v = 0:9, col = "lightgray")
+segments(x0 = 0:9, y0 = dg_q[1,], x1 = 0:9, y1 = dg_q[3,])
+lines(x = 0:9, y = dg_q[2,], type = "p", pch = 16)
+lines(x = 0:9, y = dpois(x = 0:9, lambda = k), col = 4, type = "p", pch = 17)
+legend("topright", legend = c("Sim.", "Pois."), col = c(1,4), pch = c(16,17))
+```
+
+
+```{r, fig.width=12, fig.height=6, fig.align='center'}
+par(mfrow = c(1,2), mar = c(3,3,1,1), mgp = c(1.75,0.75,0))
+hist(x = dp, freq = F, col = "gray90", border = "gray90", xlab = "Distancia prom.", ylab = "Densidad", main = "Distancia prom.")
+abline(v = quantile(x = dp, probs = c(0.025,0.5,0.975)), col = c(2,4,2), lty = c(2,4,2) ,lwd = c(2,1,2))
+hist(x = ca, freq = F, col = "gray90", border = "gray90", xlab = "Transitividad", ylab = "Densidad", main = "Transitividad")
+abline(v = quantile(x = ca, probs = c(0.025,0.5,0.975)), col = c(2,4,2), lty = c(2,4,2) ,lwd = c(2,1,2))
+legend("topright", legend = c("P 50", "IC 95"), col = c(2,4), lty = c(2,4), lwd = 2)
+```
+
+
+
+## Estimación
+
+¿Cuál valor de $\theta\in\Theta$ que hace $\tilde{\mathbf{Y}}\sim p(\mathbf{Y}\mid\theta)$ sea lo más similar posible a $\mathbf{Y}$?
+
+El **estimador de máxima verosimilitud** (*maximum likelihood estimator*, MLE) de $\theta$ es el valor $\hat{\theta}\in\Theta$ que maximiza la probabilidad de los datos observados:
+$$
+p(\mathbf{Y}\mid\hat{\theta})\geq p(\mathbf{Y}\mid\theta)\,\,\text{para todo }\theta\in\Theta\,.
+$$
+El MLE de $\theta$ es la densidad de $\mathbf{Y}$, i.e., $\hat{\theta} = \textsf{den}(\mathbf{Y})$, dado que la log-verosimilitud está dada por:
+$$
+\ell(\theta) = \log p(\mathbf{Y}\mid\theta) = \log\theta\textstyle\sum y_{i,j} + \log(1-\theta)\textstyle\sum (1-y_{i,j})\,.
+$$
+
+## Bondad de ajuste
+
+Una **prueba de bondad de ajuste interna** es una comparación de los datos observados con el modelo de probabilidad propuesto.
+
+**Ingredientes:**
+
+- Un **estadístico de prueba** $t$ donde $t:\mathcal{Y}\rightarrow\mathbb{R}$ es una función de valor real conocida de los datos.
+- Una **distribución nula** $p(t\mid\textsf{M})$ donde $p(t\mid\textsf{M})$ es la distribución de probabilidad de $t$ bajo el modelo estadístico $\textsf{M}$.
+- Una **medida de discrepancia** asociada con la comparación de $t_{\text{obs}} = t(\mathbf{Y})$ con $p(t\mid\textsf{M})$. Esta medida se denominada **valor** $p$ y se calcula como $p = \textsf{Pr}(t > t_{\text{obs}}\mid\textsf{M})$. El valor $p$ se puede aproximar por medio de **métodos de Monte Carlo**. Valores $p$ que tienden a 0 o a 1 indican una alta discrepancia entre los datos observados y el modelo propuesto.
+
+Una característica se denomina **"significativa"** si resulta ser inusual o inesperada (valo $p$ extremo) respecto a modelo de grafos aleatorios (e.g., modelo de Erdös–Rényi).
+
+Procedimiento de evaluación del modelo:
+
+1. Calcular $\hat{\theta}$ a partir del conjunto de datos observado $\mathbf{Y}$.
+2. Simular $\tilde{\mathbf{Y}}_1,\ldots,\tilde{\mathbf{Y}}_B$ a partir del modelo propuesto $p(\mathbf{Y}\mid\hat{\theta})$.
+3. Calcular $t_{\text{obs}} = t(\mathbf{Y})$ y $t(\tilde{\mathbf{Y}}_1),\ldots,t(\tilde{\mathbf{Y}}_B)$.
+4. Comparar $t_{\text{obs}}$ con la distribución empírica de $t(\tilde{\mathbf{Y}}_1),\ldots,t(\tilde{\mathbf{Y}}_B)$.
+
+Estadísticos de prueba:
+
+- Densidad.
+- Transitividad.
+- Asortatividad.
+- Reciprocidad. 
+- Diámetro.
+- Fracción de vértices aislados, de articulación, o de la componente gigante.
+- Media, SD, o cualquier característica de una medida de centralidad.
+- Media, SD, o cualquier característica de la distancia geodésica.
+- **Cualquier función de los datos observados**.
+
+## Ejemplo: Conflictos
+
+***Hoff, P. D. (2009). Multiplicative latent factor models for description and prediction of social networks. Computational and mathematical organization theory, 15(4), 261.***
+
+Datos de conflictos entre países en los años 90. 
+
+`Y` hace referencia a una matriz $\mathbf{Y}=[y_{i,j}]$ en la que $y_{i,j}$ representa el número de conflictos iniciados por el país $i$ hacia el país $j$.
+
+```{r}
+suppressMessages(suppressWarnings(library(igraph)))
+# datos
+load("conflict.RData")
+Y <- dat$Y
+# simetrizar y binarizar
+Y <- 1*(Y+t(Y) > 0)
+Y[Y != 0] <- 1
+g <- graph_from_adjacency_matrix(adjmatrix = Y, mode = "undirected")
+# orden
+vcount(g)
+# tamaño
+ecount(g)
+# dirigida?
+is_directed(g)
+# ponderada?
+is_weighted(g)
+```
+
+
+```{r, fig.width=6, fig.height=6, fig.align='center'}
+# grafico
+col <- c(RColorBrewer::brewer.pal(9,"Set1")[1:9])
+igraph_options(vertex.label = NA, edge.color = "gray40", vertex.color = adjustcolor(col[1], 0.3), vertex.frame.color = col[1])
+set.seed(42)
+plot(g, layout = layout_with_kk, vertex.size = 3*sqrt(degree(g)), main = "Conflictos")
+```
+
+
+
+```{r, fig.width=12, fig.height=6, fig.align='center'}
+# estimacion de theta MLE
+theta_hat <- edge_density(g, loops = FALSE)
+theta_hat
+mean(Y[lower.tri(Y)])
+mean(Y[upper.tri(Y)])
+n <- dim(Y)[1]
+sum(Y)/(n*(n-1))
+# log-verosimilitud
+n <- vcount(g)
+m <- n*(n-1)/2
+s <- m*edge_density(g, loops = FALSE)
+loglik <- function(theta) s*log(theta) + (m-s)*log(1-theta)
+# grafico
+par(mfrow = c(1,2), mar = c(3,3,1,1), mgp = c(1.75,0.75,0))
+curve(expr = loglik(x), from = 0, to = 1, lwd = 2, xlab = expression(theta), ylab = "Log-verosimilitud")
+abline(v = theta_hat, col = 2, lty = 2)
+curve(expr = loglik(x), from = 0, to = 0.04, lwd = 2, xlab = expression(theta), ylab = "Log-verosimilitud")
+abline(v = theta_hat, col = 2, lty = 2)
+```
+
+
+```{r, fig.width=6, fig.height=6, fig.align='center'}
+# bondad de ajuste por medio de la transitividad
+# no es necesario almacenar los datos simulados, solo los estadisticos
+# es posible hacer este computo en paralelo usando la doParallel
+t_obs <- transitivity(g)
+B <- 1000
+t_rep <- NULL
+set.seed(42)
+for (i in 1:B) {
+  g_rep <- sample_gnp(n = n, p = theta_hat, directed = F, loops = F)
+  t_rep[i] <- transitivity(g_rep)
+}
+# grafico
+hist(x = t_rep, freq = F, col = "gray90", border = "gray90", xlim = c(0,0.2), xlab = "Transitividad", ylab = "Densidad", main = "Conflictos")
+abline(v = t_obs, col = 4, lty = 2)
+# valor p
+mean(t_rep > t_obs)
+```
+
+
+# Validación cruzada
+
+- Particionar el **conjunto de díadas** $D$ en $L$ grupos (*folds*) $C_1,\ldots,C_L$ de aproximadamente el mismo tamaño.
+- Para $\ell=1,\ldots,L$:
+    1. Establecer las **díadas de entrenamiento** (*traning data*), $D-\cup_{k\neq\ell} C_k$.
+    2. Establecer las **díadas de prueba** (*test data*), $C_\ell$.
+    3. Ajustar el modelo usando las díadas de entrenamiento.
+    4. Calcular las probabilidades interacción para las díadas de prueba.
+    5. Comparar las probabilidades interacción con los valores observados de las díadas de prueba.
+
+
+```{r, eval = TRUE, echo=FALSE, out.width="85%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("modelos_cv.jpg")
+```
+
+## Matriz de confusión
+
+```{r, eval = TRUE, echo=FALSE, out.width="85%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("modelos_matriz_confusion.jpeg")
+```
+
+
+## Curva ROC
+
+Una **curva característica operativa del receptor** (*Receiver Operating Characteristic (ROC) curve*) es una representación de la **Tasa de Verdaderos Positivos (Sensibilidad) frente a la Tasa de Falsos Positivos (1 - Especificidad)** para un **clasificador binario** según se **varía el umbral de discriminación**.
+
+
+```{r, eval = TRUE, echo=FALSE, out.width="85%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("modelos_curva_roc.png")
+```
+
+
+## Ejemplo: Conflictos (cont.)
+
+
+```{r}
+suppressMessages(suppressWarnings(library(igraph)))
+# datos
+load("conflict.RData")
+Y <- dat$Y
+# simetrizar y binarizar
+Y <- 1*(Y+t(Y) > 0)
+Y[Y != 0] <- 1
+g <- graph_from_adjacency_matrix(adjmatrix = Y, mode = "undirected")
+```
+
+### Conformación de folds {-}
+
+```{r, fig.width=6, fig.height=6, fig.align='center'}
+# orden
+n <- vcount(g)
+n
+# numero de diadas
+M <- n*(n-1)/2
+M
+# numero de folds
+L <- 10
+# conformacion de folds
+set.seed(42)
+fold_index_vec <- sample(x = 1:L, size = M, replace = T)
+fold_index_mat <- matrix(data = 0, nrow = n, ncol = n)
+fold_index_mat[lower.tri(fold_index_mat)] <- fold_index_vec
+# distribucion de folds
+tab <- table(fold_index_vec)
+tab
+# viz de folds a traves de la matriz de adyacencia
+corrplot::corrplot(corr = fold_index_mat/L, col.lim = c(0,1), method = "color", tl.pos = "n", cl.pos = "n")
+# distribucion de enlaces por fold
+y <- Y[lower.tri(Y)]
+tmp <- NULL
+for (l in 1:L)
+  tmp <- rbind(tmp, table(y[fold_index_vec == l])/tab[l])
+round(tmp, 3)
+```
+
+
+### Probabilidades de interacción en cada fold {-}
+
+
+```{r}
+# validacion cruzada
+IP <- vector(mode = "list", L)
+B <- 1000
+set.seed(123)
+for (l in 1:L) {
+  # datos de entrenamiento
+  y_train <- y  
+  y_train[fold_index_vec == l] <- NA
+  # ajuste del modelo
+  theta_hat <- mean(y_train, na.rm = T)
+  # predecir
+  n_test <- tab[l]
+  inter_prob <- rep(0, n_test)
+  for (b in 1:B)
+    inter_prob <- inter_prob + rbinom(n = n_test, size = 1, prob = theta_hat)/B
+  IP[[l]] <- inter_prob
+}
+```
+
+
+### Curvas ROC {-}
+
+```{r, fig.width=6, fig.height=6, fig.align='center'}
+# curvas ROC y AUCs
+aucs <- NULL
+plot(NA, NA, xlim = c(0,1), ylim = c(0,1), xlab = "Tasa Falsos Positivos", ylab = "Tasa verdaderos positivos", main = "Curva ROC")
+abline(a = 0, b = 1, col = "gray", lwd = 2)
+for (l in 1:L) {
+  # datos de prueba
+  y_test <- y[fold_index_vec == l]
+  # rendimiento
+  pred <- ROCR::prediction(predictions = IP[[l]], labels = y_test)
+  perf <- ROCR::performance(prediction.obj = pred, measure = "tpr", x.measure = "fpr")
+  # ROC
+  lines(x = perf@x.values[[1]], y = perf@y.values[[1]], type = "l", col = 2)
+  # AUC
+  perf <- ROCR::performance(prediction.obj = pred, measure = "auc")
+  aucs[l] <- perf@y.values[[1]]
+}
+```
+
+### Áreas bajo la curva ROC {-}
+
+
+```{r}
+# AUCs
+round(aucs, 4)
+# AUC promedio
+round(mean(aucs), 4)
+# AUC CV
+round(sd(aucs)/mean(aucs), 2)
+```
+
+
+# Referencias
+
+```{r, eval = TRUE, echo=FALSE, out.width="25%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("KCbookcover1.jpg")
+```

@@ -1,0 +1,1153 @@
+---
+title: "Comparación de los discursos de posesión presidencial en Colombia: Uribe, Santos, Duque y Petro"
+author: 
+- Isabella Agudelo, isagudelog@unal.edu.co, Estudiante de Estadística UN.
+- Kevin Leal, klealp@unal.edu.co, Estudiante de Estadística UN.
+- Juan Sosa PhD, jcsosam@unal.edu.co, Profesor Asistente de Estadística UN.
+date: ""
+output:
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F)
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+```
+
+
+# Introducción
+
+En el presente trabajo se realiza un análisis y comparación de los discursos de posesión presidencial de los últimos 4 presidentes electos en Colombia. Se unifican los dos discursos para los dos períodos de posesión de Álvaro Uribe Vélez (2002-2010), al igual que los dos discursos de posesión de Juan Manuel Santos (2010-2018). También se consideran el discurso de Iván Duque Márquez (2018-2022), y el del actual presidente Gustavo Francisco Petro Urrego (2022-2026). Para tal fin, se quiere:
+
+- Identificar palabras con mayor importancia.
+- Cuantificar relaciones y conexiones entre palabras.
+
+```{r, eval = TRUE, echo=FALSE, out.width="75%", fig.pos = 'H', fig.align = 'center', fig.cap="Imagen tomada de pulzo."}
+knitr::include_graphics("usdp.png")
+```
+
+Los desarrollos que se presentan a continuación están basados en las herramientas y técnicas previamente expuestas en el trabajo [Relaciones entre palabras](https://rpubs.com/jstats1702/946584) donde se comparan los discursos de Petro y Duque ante la ONU.
+
+Todo el código relacionado con este informe se encuentra disponible en este [enlace](https://github.com/jstats1702/redes-sociales-2022-2).
+
+
+
+# Importar texto
+
+Se realiza la importación de cada uno de los discursos simplificándolo con la función `unlist` para producir un vector que contenga cada una de las líneas de texto.
+
+```{r}
+##### importar datos
+suppressMessages(suppressWarnings(library(readr)))
+suppressMessages(suppressWarnings(library(tidyverse)))
+# Petro
+text_petro <- unlist(c(read_csv("discurso_posesion_petro.txt", col_names = FALSE, show_col_types = FALSE)))
+names(text_petro) <- NULL
+# duque
+text_duque <- unlist(c(read_csv("discurso_posesion_duque.txt", col_names = FALSE, show_col_types = FALSE)))
+names(text_duque) <- NULL
+# Santos
+text_santos <- unlist(c(read_csv("discursos_posesion_santos.txt", col_names = FALSE, show_col_types = FALSE)))
+names(text_santos) <- NULL
+# Uribe
+text_uribe <- unlist(c(read_csv("discursos_posesion_uribe.txt", col_names = FALSE, show_col_types = FALSE)))
+names(text_uribe) <- NULL
+```
+
+Ahora, los textos se almacenan en un objeto tipo `tibble`, entendido como una generalización del *data frame*, el cual permite manipular de forma más sencilla objetos "grandes" y no estructurados como los textos. 
+
+```{r}
+##### data frame formato tidy
+# petro
+text_petro <- tibble(line = 1:length(text_petro), text = text_petro) 
+# duque
+text_duque <- tibble(line = 1:length(text_duque), text = text_duque)
+# santos
+text_santos <- tibble(line = 1:length(text_santos), text = text_santos)
+# uribe
+text_uribe <- tibble(line = 1:length(text_uribe), text = text_uribe)
+```
+
+
+# Proceso de Tokenización
+
+Para empezar con el análisis, el primer paso es realizar la tokenización del texto, lo cual convierte cada palabra en la unidad de análisis de este caso de estudio, separándolas en una casilla particular. Además las funciones en `tidytext` ya realizan una buena exportación de los datos al convertir todas las mayúsculas en minúsculas y eliminar los signos de puntuación. 
+
+```{r}
+suppressMessages(suppressWarnings(library(tidytext)))
+suppressMessages(suppressWarnings(library(magrittr)))
+##### tokenizacion formato tidy
+# ---------- petro ----------
+text_petro %<>%
+  unnest_tokens(input = text, output = word) %>%
+  filter(!is.na(word))  # Eliminamos espacios en blanco
+# dim(text_petro)
+# head(text_petro, n = 8)
+# ---------- duque ----------
+text_duque %<>%
+  unnest_tokens(input = text, output = word) %>%
+  filter(!is.na(word))
+# dim(text_duque)
+# head(text_duque, n = 8)
+# ---------- santos ----------
+text_santos %<>%
+  unnest_tokens(input = text, output = word) %>%
+  filter(!is.na(word))
+# dim(text_santos)
+# head(text_santos, n = 8)
+# ---------- uribe ----------
+text_uribe %<>%
+  unnest_tokens(input = text, output = word) %>%
+  filter(!is.na(word))
+# dim(text_uribe)
+# head(text_uribe, n = 8)
+```
+
+# Normalización del texto
+
+Como segundo paso para el estudio se debe realizar una normalización del texto. Esta empieza con la decisión sobre si se deben conservar los números presentes en los discursos o no. La búsqueda de caracteres numéricos para cada discurso se muestra a continuación.
+
+```{r, eval = F}
+# ---------- petro ----------
+text_petro %>%
+  filter(grepl(pattern = '[0-9]', x = word)) %>% 
+  count(word, sort = TRUE)
+# ---------- duque ----------
+text_duque %>%
+  filter(grepl(pattern = '[0-9]', x = word)) %>% 
+  count(word, sort = TRUE)
+# ---------- santos ----------
+text_santos %>%
+  filter(grepl(pattern = '[0-9]', x = word)) %>% 
+  count(word, sort = TRUE)
+# ---------- uribe ----------
+text_uribe %>%
+  filter(grepl(pattern = '[0-9]', x = word)) %>% 
+  count(word, sort = TRUE)
+```
+
+Se observa que los discursos del presidente Gustavo Petro y el expresidente Iván Duque contienen muy pocos números (6 y 5 respectivamente) en comparación a los discursos unificados de los otros dos expresidentes (20 para Santos y 22 para Uribe). Aunque los números pueden representar cifras significativas en el momento histórico particular para cada uno de los periodos presidenciales, estos no serán considerados en la comparación de los discursos, así se procede a eliminar estos registros. 
+
+```{r}
+##### remover texto con numeros
+# ---------- petro ----------
+text_petro %<>%
+  filter(!grepl(pattern = '[0-9]', x = word))
+# dim(text_petro)
+# ---------- duque ----------
+text_duque %<>%
+  filter(!grepl(pattern = '[0-9]', x = word))
+# dim(text_duque)
+# ---------- santos ----------
+text_santos %<>%
+  filter(!grepl(pattern = '[0-9]', x = word))
+# dim(text_santos)
+# ---------- uribe ----------
+text_uribe %<>%
+  filter(!grepl(pattern = '[0-9]', x = word))
+# dim(text_uribe)
+```
+
+# Eliminación de *stop words*
+
+Ahora, se exporta una lista de *stop words* con 451 palabras en español que permiten eliminar todas las palabras que no aportan información relevante para este análisis, como conectores, artículos o verbos auxiliares de uso común. Una vez hecho esto, se reducen considerablemente la cantidad de registros en los archivos. 
+
+```{r}
+###### stop words 
+stop_words_es <- tibble(word = unlist(c(read.table("stop_words_spanish.txt", quote="\"", comment.char=""))), lexicon = "custom")
+# dim(stop_words_es)
+```
+
+```{r}
+##### remover stop words
+# ---------- petro ----------
+text_petro %<>% 
+  anti_join(x = ., y = stop_words_es)
+# dim(text_petro)
+# head(text_petro, n = 8)
+# ---------- duque ----------
+text_duque %<>% 
+  anti_join(x = ., y = stop_words_es)
+# dim(text_duque)
+# head(text_duque, n = 8)
+# ---------- santos ----------
+text_santos %<>% 
+  anti_join(x = ., y = stop_words_es)
+# dim(text_santos)
+# head(text_santos, n = 8)
+# ---------- uribe ----------
+text_uribe %<>% 
+  anti_join(x = ., y = stop_words_es)
+#dim(text_uribe)
+#head(text_uribe, n = 8)
+```
+
+Para finalizar con la normalización, se remueven los acentos del idioma español después de eliminar las *stop words*, así se evita remover palabras que sin acento hubieran podido ser eliminadas en el paso anterior.
+
+```{r}
+##### remover acentos
+replacement_list <- list('á' = 'a', 'é' = 'e', 'í' = 'i', 'ó' = 'o', 'ú' = 'u')
+# ---------- petro ----------
+text_petro %<>% 
+  mutate(word = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word))
+# ---------- duque ----------
+text_duque %<>% 
+  mutate(word = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word))
+# ---------- santos ----------
+text_santos %<>% 
+  mutate(word = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word))
+# ---------- uribe ----------
+text_uribe %<>% 
+  mutate(word = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word))
+```
+
+
+# Tokens más frecuentes
+
+Una vez hecho el tratamiento a estas bases de datos, se realiza un conteo de las palabras y se identifican las modas o las palabras más frecuentes para cada uno de los discursos. A continuación se presentan el top 10 en cada caso.
+
+```{r, eval = F}
+##### top 10 de tokens mas frecuentes
+# ---------- petro ----------
+text_petro %>% 
+  count(word, sort = TRUE) %>%
+  head(n = 10)
+# ---------- duque ----------
+text_duque %>% 
+  count(word, sort = TRUE)  %>%
+  head(n = 10)
+# ---------- santos ----------
+text_santos %>% 
+  count(word, sort = TRUE)  %>%
+  head(n = 10)
+# ---------- uribe ----------
+text_uribe %>% 
+  count(word, sort = TRUE)  %>%
+  head(n = 10)
+```
+
+No es sorprendente que entre los discursos se compartan varias palabras como las más frecuentes teniendo en cuenta el carácter político de los textos, sin embargo, cabe recordar que en el caso de Juan Manuel Santos y Álvaro Uribe Vélez se cuentan con dos discursos que equivalen aproximadamente al "doble" de palabras que las presentes en los discursos de Gustavo Petro e Iván Duque. Para una mejor visualización se presenta un diagrama de barras con las frecuencias de las palabras para cada discurso. En el caso de Petro y Duque se establece un filtro en la frecuencia mayor que 6 y para Santos y Uribe el filtro es de 9.
+
+```{r, fig.width=11, fig.height=12, fig.align='center', echo=FALSE}
+library(gridExtra)
+# ---------- petro ----------
+text_petro %>%
+  count(word, sort = TRUE) %>%
+  filter(n > 6) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(x = word, y = n)) +
+    theme_light() + 
+    geom_col(fill = '#00FF7F', alpha = 0.8) +
+    xlab(NULL) +
+    ylab("Frecuencia") +
+    coord_flip() +
+    ggtitle(label = 'Petro: Conteo de palabras') -> p1
+# ---------- duque ----------
+text_duque %>%
+  count(word, sort = TRUE) %>%
+  filter(n > 6) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(x = word, y = n)) +
+    theme_light() + 
+    geom_col(fill = 'blue4', alpha = 0.8) +
+    xlab(NULL) +
+    ylab("Frecuencia") +
+    coord_flip() +
+    ggtitle(label = 'Duque: Conteo de palabras') -> p2
+# ---------- santos ----------
+text_santos %>%
+  count(word, sort = TRUE) %>%
+  filter(n > 9) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(x = word, y = n)) +
+    theme_light() + 
+    geom_col(fill = '#FFFF00', alpha = 0.8) +
+    xlab(NULL) +
+    ylab("Frecuencia") +
+    coord_flip() +
+    ggtitle(label = 'Santos: Conteo de palabras') -> p3
+# ---------- uribe ----------
+text_uribe %>%
+  count(word, sort = TRUE) %>%
+  filter(n > 9) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(x = word, y = n)) +
+    theme_light() + 
+    geom_col(fill = '#EE0000', alpha = 0.8) +
+    xlab(NULL) +
+    ylab("Frecuencia") +
+    coord_flip() +
+    ggtitle(label = 'Uribe: Conteo de palabras') -> p4
+# desplegar grafico
+grid.arrange(p1, p2, p3, p4, ncol = 2)
+```
+
+Como una alternativa para mejorar la visualización se realizan nubes de palabras, que ilustra un máximo de 25 palabras para cada discurso cuyo tamaño es proporcional a su frecuencia en los textos 
+
+```{r, fig.width=12, fig.height=9, fig.align='center', echo=FALSE}
+library(wordcloud)
+par(mfrow = c(2,2), mar = c(1,1,2,1), mgp = c(1,1,1), cex.main=2.5 )
+# ---------- petro ----------
+set.seed(176)
+text_petro %>%
+  count(word, sort = TRUE) %>%
+  with(wordcloud(words = word, freq = n, max.words = 25, colors = '#00FF7F'))
+title(main = "Petro")
+# ---------- duque ----------
+set.seed(176)
+text_duque %>%
+  count(word, sort = TRUE) %>%
+  with(wordcloud(words = word, freq = n, max.words = 25, colors = 'blue4'))
+title(main = "Duque")
+# ---------- santos ----------
+set.seed(176)
+text_santos %>%
+  count(word, sort = TRUE) %>%
+  with(wordcloud(words = word, freq = n, max.words = 25, colors = '#FFFF00'))
+title(main = "Santos")
+# ---------- uribe ----------
+set.seed(176)
+text_uribe %>%
+  count(word, sort = TRUE) %>%
+  with(wordcloud(words = word, freq = n, max.words = 25, colors = '#EE0000'))
+title(main = "Uribe")
+```
+
+Ahora, para poder realizar comparaciones más directas entre los discursos, primero se calculan las frecuencias relativas de todas las palabras que son mencionadas en ellos, por lo cual, algunas tendrán frecuencia cero si no fueron mencionadas dentro de las alocución del respectivo estadista.
+
+```{r}
+##### frecuencias relativas de las palabras
+bind_rows(mutate(.data = text_petro, author = "petro"),
+                       mutate(.data = text_duque, author = "duque"),
+                       mutate(.data = text_santos, author = "santos"),
+                       mutate(.data = text_uribe, author = "uribe")) %>%
+  count(author, word) %>%
+  group_by(author) %>%
+  mutate(proportion = n/sum(n)) %>%
+  select(-n) %>%
+  spread(author, proportion, fill = 0) -> frec  # importante!
+frec %<>% 
+  select(word, petro, duque, santos, uribe)
+# dim(frec)
+# head(frec, n = 10)
+```
+
+En la siguiente tabla se ordenan de forma anidada, de acuerdo a los respectivos periodos presidenciales, desde el actual hasta el más antiguo, las 15 palabras más frecuentes en común entre los discursos. 
+
+```{r}
+# orden anidado respecto al actual presidente hacia el último expresidente
+frec %>%
+  filter(petro !=0, duque != 0, santos!=0, uribe!=0) %>%
+  arrange(desc(petro), desc(duque), desc(santos), desc(uribe)) -> frec_comun
+# dim(frec_comun)
+head(frec_comun, n = 15)
+```
+
+Además, se encuentra que de todas las palabras en conjunto, solo el 3.33% son mencionadas en los 4 discursos.
+
+```{r, eval = F}
+###### proporcion palabras en comun
+dim(frec_comun)[1]/dim(frec)[1]
+```
+
+Una vez calculadas las frecuencias, se deciden calcular los coeficientes de correlación lineal de Pearson entre cada par de alocuciones para evaluar que tan parecidos son sus contenidos.
+
+```{r}
+suppressMessages(suppressWarnings(library(gtools)))
+Pres <- c("Petro","Duque","Santos","Uribe")
+comb <- combinations(4, 2, 2:5)
+frec <- as.data.frame(frec)
+frec_comun <- as.data.frame(frec_comun)
+Tab <- matrix(0,6,2)
+for(i in 1:6){
+Tab[i,1] <- cor.test(x = frec[,comb[i,1]], y = frec[,comb[i,2]])$estimate
+Tab[i,2] <- cor.test(x = frec_comun[,comb[i,1]], y = frec_comun[,comb[i,2]])$estimate
+}
+Tabla <- cbind(Pres[combinations(4, 2, 1:4)[,1]], Pres[combinations(4, 2, 1:4)[,2]], round(Tab,3))
+colnames(Tabla) <- c("Discurso 1 ", "Discurso 2", "Corr P. Total","Corr P. común")
+```
+
+
+```{r, include=FALSE}
+library(xtable)
+print(xtable(Tabla,align=c("c","c","c","c","c")), type = "html")
+```
+
+<table border=2>
+<tr> <th>  </th> <th> Discurso 1  </th> <th> Discurso 2 </th> <th> Corr P. Total </th> <th> Corr P. común </th>  </tr>
+  <tr> <td align="center"> <td align="center"> Petro </td> <td align="center"> Duque </td> <td align="center"> 0.48 </td> <td align="center"> 0.694 </td> </tr>
+  <tr> <td align="center"> <td align="center"> Petro </td> <td align="center"> Santos </td> <td align="center"> 0.536 </td> <td align="center"> 0.673 </td> </tr>
+  <tr> <td align="center"> <td align="center"> Petro </td> <td align="center"> Uribe </td> <td align="center"> 0.291 </td> <td align="center"> 0.356 </td> </tr>
+  <tr> <td align="center"> <td align="center"> Duque </td> <td align="center"> Santos </td> <td align="center"> 0.595 </td> <td align="center"> 0.768 </td> </tr>
+  <tr> <td align="center"> <td align="center"> Duque </td> <td align="center"> Uribe </td> <td align="center"> 0.33 </td> <td align="center"> 0.339 </td> </tr>
+  <tr> <td align="center"> <td align="center"> Santos </td> <td align="center"> Uribe </td> <td align="center"> 0.394 </td> <td align="center"> 0.394 </td> </tr>
+   </table>
+
+# Conclusiones de los conteos
+
+Se observa que, en todos los discursos, excepto en el de Uribe, la palabra con mayor frecuencia es “Colombia”, en tanto que “paz” está en el top 10 de todos excepto en el de Duque. El discurso de Petro se distingue con palabras importantes como “vida”, “humanidad” y “economía”; el de Duque por “construir”, “legalidad” y “equidad”; los de Santos por “desarrollo”, “justicia” y “social” y los discursos de Uribe por “seguridad”, “crecimiento” y “democracia”.  Es de resaltar que, mientras que en los discursos de Santos y de Duque la tercera palabra más frecuente es “colombianos”, en el de Petro se destaca la palabra “colombianas”, marcando una diferencia en lo que respecta a inclusión.
+
+Por otro lado, en el conteo de los registros, es evidente que el número de palabras con una frecuencia mayor a 6 es menor en el discurso de Petro, el cual es el más corto y en donde parece se usó mayor variedad de palabras. La alocución de Duque es más reiterativa y las frecuencias en el caso de Santos y de Uribe son mayores puesto que se están considerando dos discursos, por este motivo, el tamaño y el número de las palabras en los gráficos de nube para estos dos archivos es mayor. 
+
+Las palabras en común a los 4 discursos, con una proporción del 3.33%, muestran la índole política del análisis, al resaltar palabras como “pueblo”, “Estado”, “riqueza”, “violencia”, “educación” y “salud”.  La similaridad en los discursos, vista por medio de las correlaciones entre las frecuencias de los registros, muestran que Petro tiende a usar palabras semejantes a las mencionadas por Santos y diferentes a las del discurso de Uribe, puesto que tienen la mayor y menor correlación respectivamente. En contraste, dentro de las palabras que usan en común, Duque las emplea con frecuencias parecidas a las de Santos y diferentes a las de Uribe, evidenciando que los discursos de Uribe son los que más diferencias presentan con todos los demás.
+
+# Análisis de sentimiento
+
+El siguiente paso es realizar un análisis de sentimiento de las palabras en cada texto. Para esto, se utiliza un diccionario pre-existente (y editado según el interés del estudio) de palabras "positivas" y uno de palabras consideradas como "negativas".
+
+```{r}
+# diccionarios
+positive_words <- read_csv("positive_words_es.txt", col_names = "word", show_col_types = FALSE) %>%
+  mutate(sentimiento = "Positivo")
+negative_words <- read_csv("negative_words_es.txt", col_names = "word", show_col_types = FALSE) %>%
+  mutate(sentimiento = "Negativo")
+sentiment_words <- bind_rows(positive_words, negative_words)
+#sentiment_words %>%
+#  count(sentimiento)
+```
+
+Con estos diccionarios es posible crear un gráfico de barras para cada personaje mostrando las palabras positivas y negativas con una frecuencia mayor que 2 en el caso de Petro y Duque, y mayor que 3 para Santos y Uribe.
+
+```{r, fig.width=11, fig.height=10, fig.align='center', echo=FALSE}
+###### viz
+library(RColorBrewer)
+# ---------- petro ----------
+text_petro %>%
+  inner_join(sentiment_words) %>%
+  count(word, sentimiento, sort = TRUE) %>%
+  filter(n > 2) %>%
+  mutate(n = ifelse(sentimiento == "Negativo", -n, n)) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n, fill = sentimiento)) +
+    geom_col() +
+    scale_fill_manual(values = brewer.pal(8,'Set1')[c(1,3)]) +
+    coord_flip(ylim = c(-7,7)) +
+    labs(y = "Frecuencia",
+         x = NULL,
+         title = "Petro: Conteo por sentimiento") +
+    theme_minimal() -> p1
+# ---------- duque ----------
+text_duque %>%
+  inner_join(sentiment_words) %>%
+  count(word, sentimiento, sort = TRUE) %>%
+  filter(n > 2) %>%
+  mutate(n = ifelse(sentimiento == "Negativo", -n, n)) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n, fill = sentimiento)) +
+    geom_col() +
+    scale_fill_manual(values = brewer.pal(8,'Set1')[c(1,3)]) +
+    coord_flip(ylim = c(-7,7)) +
+    labs(y = "Frecuencia",
+         x = NULL,
+         title = "Duque: Conteo por sentimiento") +
+    theme_minimal() -> p2 
+# ---------- santos ----------
+text_santos %>%
+  inner_join(sentiment_words) %>%
+  count(word, sentimiento, sort = TRUE) %>%
+  filter(n > 3) %>%
+  mutate(n = ifelse(sentimiento == "Negativo", -n, n)) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n, fill = sentimiento)) +
+    geom_col() +
+    scale_fill_manual(values = brewer.pal(8,'Set1')[c(1,3)]) +
+    coord_flip(ylim = c(-7,7)) +
+    labs(y = "Frecuencia",
+         x = NULL,
+         title = "Santos: Conteo por sentimiento") +
+    theme_minimal() -> p3 
+# ---------- uribe ----------
+text_uribe %>%
+  inner_join(sentiment_words) %>%
+  count(word, sentimiento, sort = TRUE) %>%
+  filter(n > 3) %>%
+  mutate(n = ifelse(sentimiento == "Negativo", -n, n)) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n, fill = sentimiento)) +
+    geom_col() +
+    scale_fill_manual(values = brewer.pal(8,'Set1')[c(1,3)]) +
+    coord_flip(ylim = c(-7,7)) +
+    labs(y = "Frecuencia",
+         x = NULL,
+         title = "Uribe: Conteo por sentimiento") +
+    theme_minimal() -> p4 
+# desplegar grafico
+grid.arrange(p1, p2, p3, p4, ncol = 2)
+```
+
+De manera similar a los conteos anteriores, es posible graficar una nube de máximo 50 palabras, distinguiendo las positivas de las negativas para poder realizar una comparación más sencilla.
+
+
+```{r, fig.width=10, fig.height=11, fig.align='center', echo=FALSE}
+suppressMessages(suppressWarnings(library(reshape2)))  # acast
+##### viz
+par(mfrow = c(2,2), mar = c(2,1,2,1), mgp = c(1,1,1), cex.main=2)
+# ---------- petro ----------
+set.seed(176)
+text_petro %>%
+  inner_join(sentiment_words) %>%
+  count(word, sentimiento, sort = TRUE) %>%
+  acast(word ~ sentimiento, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = brewer.pal(8,'Set1')[c(1,3)], 
+                   max.words = 50, title.size = 1.2)
+title(main = "Petro")
+# ---------- duque ----------
+set.seed(176)
+text_duque %>%
+  inner_join(sentiment_words) %>%
+  count(word, sentimiento, sort = TRUE) %>%
+  acast(word ~ sentimiento, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = brewer.pal(8,'Set1')[c(1,3)], 
+                   max.words = 50, title.size = 1.2)
+title(main = "Duque")
+# ---------- santos ----------
+set.seed(176)
+text_santos %>%
+  inner_join(sentiment_words) %>%
+  count(word, sentimiento, sort = TRUE) %>%
+  acast(word ~ sentimiento, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = brewer.pal(8,'Set1')[c(1,3)], 
+                   max.words = 50, title.size = 1.2)
+title(main = "Santos")
+# ---------- uribe ----------
+set.seed(176)
+text_uribe %>%
+  inner_join(sentiment_words) %>%
+  count(word, sentimiento, sort = TRUE) %>%
+  acast(word ~ sentimiento, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = brewer.pal(8,'Set1')[c(1,3)], 
+                   max.words = 50, title.size = 1.2)
+title(main = "Uribe")
+```
+
+# Conclusiones para los sentimientos
+
+En general, por medio de los diagramas de barras, se observa que son más la cantidad de palabras positivas mencionadas en los discursos que las palabras negativas, además de que se mencionan con frecuencias considerablemente mayores. Sin embargo, es de resaltar que los expresidentes Iván Duque y Juan Manuel Santos tienden a repetir más las palabras negativas que el presidente Gustavo Petro y el expresidente Álvaro Uribe.
+
+Se encontra que las palabras positivas que comparten más recurrentemente son “paz”, “reforma” y “justicia”. Adicionalmente, hay particularidades interesantes de resaltar, por ejemplo, Petro es el único que hace énfasis en temas ambientales evidenciados en las palabras “tierra”, “ganado”, “sostenible” y, por otro lado, Uribe se destaca por considerar múltiples aspectos éticos y morales como “generosidad”, “libertad”, “confianza”, “equilibrio” e incluso “fe”. 
+
+En cuanto a las palabras negativas, las más comunes están relacionadas a temas económicos como “desigualdad”, “deuda” o “pobreza”, aunque esta última no es mencionada por el presidente Petro. También comparten temas de conflicto como “crimen”, “terrorismo”, “muertos” o “delito”. A su vez, resulta interesante que los expresidentes Duque y Uribe son los únicos en incluir “droga” en sus discursos, así como Petro es el único que menciona la palabra “tributaria”, y Duque es el único que menciona “odio”.
+
+# Bigramas
+
+Todo el análisis presentado hasta el momento se ha basado en procedimientos para unigramas. Ahora se presentarán resultados teniendo en cuenta los bigramas. Para esto, debemos realizar nuevamente la importación de los textos originales.
+
+```{r}
+##### importar datos
+text_petro <- unlist(c(read_csv("discurso_posesion_petro.txt", col_names = FALSE, show_col_types = FALSE)))
+names(text_petro) <- NULL
+text_petro <- tibble(line = 1:length(text_petro), text = text_petro)
+# duque
+text_duque <- unlist(c(read_csv("discurso_posesion_duque.txt", col_names = FALSE, show_col_types = FALSE)))
+names(text_duque) <- NULL
+text_duque <- tibble(line = 1:length(text_duque), text = text_duque)
+# Santos
+text_santos <- unlist(c(read_csv("discursos_posesion_santos.txt", col_names = FALSE, show_col_types = FALSE)))
+names(text_santos) <- NULL
+text_santos <- tibble(line = 1:length(text_santos), text = text_santos)
+# Uribe
+text_uribe <- unlist(c(read_csv("discursos_posesion_uribe.txt", col_names = FALSE, show_col_types = FALSE)))
+names(text_uribe) <- NULL
+text_uribe <- tibble(line = 1:length(text_uribe), text = text_uribe)
+```
+
+Una vez importados, la tokenización ya no será realizada por cada palabra, sino que las nuevas unidades de análisis serán todos los pares de palabras presentes en los discursos.
+
+```{r, eval}
+##### tokenizar en bigramas
+# petro
+text_petro %>%
+  unnest_tokens(tbl = ., input = text, output = bigram, token = "ngrams", n = 2) %>%
+  filter(!is.na(bigram)) -> text_petro_bi 
+#dim(text_petro_bi)
+#head(text_petro_bi, n = 8)
+# duque
+text_duque %>%
+  unnest_tokens(tbl = ., input = text, output = bigram, token = "ngrams", n = 2) %>%
+  filter(!is.na(bigram)) -> text_duque_bi  
+#dim(text_duque_bi)
+#head(text_duque_bi, n = 8)
+# santos
+text_santos %>%
+  unnest_tokens(tbl = ., input = text, output = bigram, token = "ngrams", n = 2) %>%
+  filter(!is.na(bigram)) -> text_santos_bi  
+#dim(text_santos_bi)
+#head(text_santos_bi, n = 8)
+# uribe
+text_uribe %>%
+  unnest_tokens(tbl = ., input = text, output = bigram, token = "ngrams", n = 2) %>%
+  filter(!is.na(bigram)) -> text_uribe_bi  
+#dim(text_uribe_bi)
+#head(text_uribe_bi, n = 8)
+```
+
+Nuevamente, se eliminan cualquier par de palabras que contenga una *stop word*, puesto que siguen sin aportar información relevante. Sin embargo, en este paso se separa cada palabra en una columna distinta, y en una tercera columna del archivo se almacena la frecuencia de esta pareja, lo cual será útil para la conformación de la red de los discursos. 
+
+```{r}
+##### omitir stop words
+text_petro_bi %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>%
+  filter(!grepl(pattern = '[0-9]', x = word1)) %>%
+  filter(!grepl(pattern = '[0-9]', x = word2)) %>%
+  filter(!word1 %in% stop_words_es$word) %>%
+  filter(!word2 %in% stop_words_es$word) %>%
+  mutate(word1 = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word1)) %>%
+  mutate(word2 = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word2)) %>%
+  filter(!is.na(word1)) %>% 
+  filter(!is.na(word2)) %>%
+  count(word1, word2, sort = TRUE) %>%
+  rename(weight = n) -> text_petro_bi_counts  # importante para la conformacion de la red!
+# dim(text_petro_bi_counts)
+# head(text_petro_bi_counts, n = 10)
+#duque
+text_duque_bi %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>%
+  filter(!grepl(pattern = '[0-9]', x = word1)) %>%
+  filter(!grepl(pattern = '[0-9]', x = word2)) %>%
+  filter(!word1 %in% stop_words_es$word) %>%
+  filter(!word2 %in% stop_words_es$word) %>%
+  mutate(word1 = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word1)) %>%
+  mutate(word2 = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word2)) %>%
+  filter(!is.na(word1)) %>% 
+  filter(!is.na(word2)) %>%
+  count(word1, word2, sort = TRUE) %>%
+  rename(weight = n) -> text_duque_bi_counts  
+#dim(text_duque_bi_counts)
+#head(text_duque_bi_counts, n = 10)
+#santos
+text_santos_bi %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>%
+  filter(!grepl(pattern = '[0-9]', x = word1)) %>%
+  filter(!grepl(pattern = '[0-9]', x = word2)) %>%
+  filter(!word1 %in% stop_words_es$word) %>%
+  filter(!word2 %in% stop_words_es$word) %>%
+  mutate(word1 = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word1)) %>%
+  mutate(word2 = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word2)) %>%
+  filter(!is.na(word1)) %>% 
+  filter(!is.na(word2)) %>%
+  count(word1, word2, sort = TRUE) %>%
+  rename(weight = n) -> text_santos_bi_counts  
+#dim(text_santos_bi_counts)
+#head(text_santos_bi_counts, n = 10)
+#uribe
+text_uribe_bi %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>%
+  filter(!grepl(pattern = '[0-9]', x = word1)) %>%
+  filter(!grepl(pattern = '[0-9]', x = word2)) %>%
+  filter(!word1 %in% stop_words_es$word) %>%
+  filter(!word2 %in% stop_words_es$word) %>%
+  mutate(word1 = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word1)) %>%
+  mutate(word2 = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word2)) %>%
+  filter(!is.na(word1)) %>% 
+  filter(!is.na(word2)) %>%
+  count(word1, word2, sort = TRUE) %>%
+  rename(weight = n) -> text_uribe_bi_counts
+#dim(text_uribe_bi_counts)
+#head(text_uribe_bi_counts, n = 10)
+```
+
+A continuación se da inicio al estudio a los discursos por medio de las metodologías estadísticas para el análisis de redes sociales. Para cada texto se crea un grafo no dirigido donde cada nodo es una palabra y existe una relación entre cada vértice si se evidenció un bigrama para estas dos palabras en el discurso. Además, este grafo está ponderado por la frecuencia observada del bigrama.  
+
+```{r, fig.width=10, fig.height=10, fig.align='center'}
+##### definir una red a partir de la frecuencia (weight) de los bigramas
+suppressMessages(suppressWarnings(library(igraph)))
+g_petro <- text_petro_bi_counts %>%
+  filter(weight > 0) %>%
+  graph_from_data_frame(directed = FALSE)
+g_duque <- text_duque_bi_counts %>%
+  filter(weight > 0) %>%
+  graph_from_data_frame(directed = FALSE)
+g_santos <- text_santos_bi_counts %>%
+  filter(weight > 0) %>%
+  graph_from_data_frame(directed = FALSE)
+g_uribe <- text_uribe_bi_counts %>%
+  filter(weight > 0) %>%
+  graph_from_data_frame(directed = FALSE)
+# viz
+par(mfrow = c(2,2), cex.main = 2.5)
+set.seed(176)
+plot(g_petro,  layout = layout_with_fr, vertex.color = 6, vertex.frame.color = 1, vertex.size = 3, vertex.label = NA, main = " Red de Petro")
+plot(g_duque,  layout = layout_with_fr, vertex.color = 6, vertex.frame.color = 1, vertex.size = 3, vertex.label = NA, main = " Red de Duque")
+plot(g_santos, layout = layout_with_fr, vertex.color = 6, vertex.frame.color = 1, vertex.size = 3, vertex.label = NA, main = " Red de Santos")
+plot(g_uribe,  layout = layout_with_kk, vertex.color = 6, vertex.frame.color = 1, vertex.size = 3, vertex.label = NA, main = " Red de Uribe")
+```
+
+En el siguiente gráfico se muestran las componentes conexas más grandes en cada red, pero las etiquetas se omiten en las figuras de las estructuras de estas componentes para las redes de Santos y de Uribe para una mejor visualización. Además, el tamaño de los nodos es proporcional a la fuerza de los mismos.   
+
+```{r, fig.width=12, fig.height=6, fig.align='center', echo=FALSE}
+##### componente conexa mas grande de la red
+# grafo inducido por la componente conexa
+V(g_petro)$cluster <- clusters(graph = g_petro)$membership
+gcc_petro <- induced_subgraph(graph = g_petro, vids = which(V(g_petro)$cluster == which.max(clusters(graph = g_petro)$csize)))
+
+V(g_duque)$cluster <- clusters(graph = g_duque)$membership
+gcc_duque <- induced_subgraph(graph = g_duque, vids = which(V(g_duque)$cluster == which.max(clusters(graph = g_duque)$csize)))
+
+
+par(mfrow = c(1,2), mar = c(1,1,2,1), mgp = c(1,1,1), cex.main=2)
+set.seed(176)
+
+plot(gcc_petro, layout = layout_with_kk, vertex.color = adjustcolor('#FF6347', 0.1), vertex.frame.color = '#FF6347', vertex.size = 2*strength(gcc_petro), vertex.label.color = 'black', vertex.label.cex = 0.9, vertex.label.dist = 1, edge.width = 3*E(g_petro)$weight/max(E(g_petro)$weight),edge.color="#FF8247", main = " Componente de Petro")
+
+plot(gcc_duque, layout = layout_with_kk, vertex.color = adjustcolor('#FF6347', 0.1), vertex.frame.color = '#FF6347', vertex.size = 2*strength(gcc_duque), vertex.label.color = 'black', vertex.label.cex = 0.9, vertex.label.dist = 1, edge.width = 3*E(g_duque)$weight/max(E(g_duque)$weight),edge.color="#FF8247", main = " Componente de Duque")
+```
+```{r, fig.width=12, fig.height=6, fig.align='center', echo=FALSE}
+V(g_santos)$cluster <- clusters(graph = g_santos)$membership
+gcc_santos <- induced_subgraph(graph = g_santos, vids = which(V(g_santos)$cluster == which.max(clusters(graph = g_santos)$csize)))
+
+V(g_uribe)$cluster <- clusters(graph = g_uribe)$membership
+gcc_uribe <- induced_subgraph(graph = g_uribe, vids = which(V(g_uribe)$cluster == which.max(clusters(graph = g_uribe)$csize)))
+
+par(mfrow = c(1,2), mar = c(1,1,2,1), mgp = c(1,1,1), cex.main=2)
+set.seed(176)
+plot(gcc_santos, layout = layout_with_fr, vertex.color = adjustcolor('#FF6347', 0.1), vertex.frame.color = '#FF6347', vertex.size = 2*strength(gcc_santos),vertex.label=NA, edge.width = 3*E(g_santos)$weight/max(E(g_santos)$weight),edge.color="#FF6347", main = " Componente de Santos")
+
+plot(gcc_uribe, layout = layout_with_fr, vertex.color = adjustcolor('#FF6347', 0.1), vertex.frame.color = '#FF6347', vertex.size = 2*strength(gcc_uribe),vertex.label=NA, edge.width = 3*E(g_uribe)$weight/max(E(g_uribe)$weight),edge.color="#FF6347", main = "Componente de Uribe")
+```
+
+Para una mejor interpretación, se crean nuevamente dos redes para los bigramas de los discursos de Santos y Uribe pero filtrando por los que tengan una frecuencia mayor o igual que 2. 
+
+```{r, fig.width=11, fig.height=6, fig.align='center', echo=FALSE}
+par(mfrow=c(1,2), cex.main=2)
+g_santos2 <- text_santos_bi_counts %>%
+  filter(weight > 1) %>%
+  graph_from_data_frame(directed = FALSE)
+set.seed(176)
+plot(g_santos2, layout = layout_with_kk, vertex.color = 6, vertex.frame.color = 4, vertex.label.color = 'black', vertex.label.cex = 0.8, vertex.label.dist = 1, vertex.size=strength(g_santos2), main = "Santos")
+
+g_uribe2 <- text_uribe_bi_counts %>%
+  filter(weight > 1) %>%
+  graph_from_data_frame(directed = FALSE)
+plot(g_uribe2, layout = layout_with_kk, vertex.color = 6, vertex.frame.color = 4, vertex.label.color = 'black', vertex.label.cex = 0.8, vertex.label.dist = 1, vertex.size=strength(g_uribe2), main = "Uribe")
+
+```
+
+A partir de la componente gigante para cada funcionario se calculan las principales estadísticas descriptivas para cada red, las cuales nos permitirán observar de una mejor manera la cohesión en los discursos. 
+
+```{r, include = F}
+tab <- cbind(
+  c(mean_distance(gcc_petro), mean(degree(gcc_petro)), sd(degree(gcc_petro)), clique.number(gcc_petro), edge_density(gcc_petro), transitivity(gcc_petro), assortativity_degree(gcc_petro)),
+  c(mean_distance(gcc_duque), mean(degree(gcc_duque)), sd(degree(gcc_duque)), clique.number(gcc_duque), edge_density(gcc_duque), transitivity(gcc_duque), assortativity_degree(gcc_duque)),
+  c(mean_distance(gcc_santos), mean(degree(gcc_santos)), sd(degree(gcc_santos)), clique.number(gcc_santos), edge_density(gcc_santos), transitivity(gcc_santos), assortativity_degree(gcc_santos)),
+  c(mean_distance(gcc_uribe), mean(degree(gcc_uribe)), sd(degree(gcc_uribe)), clique.number(gcc_uribe), edge_density(gcc_uribe), transitivity(gcc_uribe), assortativity_degree(gcc_uribe))
+)
+rownames(tab) <- c("Dist. media","Grado media","Grado desviación","Número clan","Densidad","Transitividad","Asortatividad")
+colnames(tab) <- c("Petro","Duque","Santos","Uribe")
+
+library(xtable)
+print(xtable(tab,align=c("c","c","c","c","c")), type = "html")
+```
+<table border=2>
+<tr> <th>  </th> <th> Petro </th> <th> Duque </th> <th> Santos </th> <th> Uribe </th>  </tr>
+  <tr> <td align="center"> Dist. media </td> <td align="center"> 4.96 </td> <td align="center"> 5.16 </td> <td align="center"> 12.30 </td> <td align="center"> 9.89 </td> </tr>
+  <tr> <td align="center"> Grado media </td> <td align="center"> 1.93 </td> <td align="center"> 1.93 </td> <td align="center"> 2.08 </td> <td align="center"> 2.04 </td> </tr>
+  <tr> <td align="center"> Grado desviación </td> <td align="center"> 1.75 </td> <td align="center"> 1.79 </td> <td align="center"> 1.87 </td> <td align="center"> 1.92 </td> </tr>
+  <tr> <td align="center"> Número clan </td> <td align="center"> 2.00 </td> <td align="center"> 2.00 </td> <td align="center"> 3.00 </td> <td align="center"> 3.00 </td> </tr>
+  <tr> <td align="center"> Densidad </td> <td align="center"> 0.07 </td> <td align="center"> 0.07 </td> <td align="center"> 0.01 </td> <td align="center"> 0.01 </td> </tr>
+  <tr> <td align="center"> Transitividad </td> <td align="center"> 0.00 </td> <td align="center"> 0.00 </td> <td align="center"> 0.01 </td> <td align="center"> 0.00 </td> </tr>
+  <tr> <td align="center"> Asortatividad </td> <td align="center"> -0.36 </td> <td align="center"> -0.37 </td> <td align="center"> -0.23 </td> <td align="center"> -0.23 </td> </tr>
+   </table>
+   
+# Conclusiones de los bigramas
+
+A partir de la revisión de los bigramas más frecuentes en cada discurso, es posible apreciar las diferentes temáticas abarcadas en cada uno.  El discurso de Petro muestra un carácter ambiental y económico al destacar expresiones como “selva amazónica”, “cambio climático”, “soberanía alimentaria”, “caminos comunes” y “comercio internacional”, mientras que le de Duque muestra una temática administrativa, donde se mencionan “sectores productivos”, “bienes públicos” y “administración pública”. Por su parte, los discursos de Santos tratan objetivos de su gobierno, tales como “unidad nacional”, “desarrollo económico” y “prosperidad democrática”, al igual que los de Uribe muestran factores característicos de sus mandatos, como lo son “seguridad democrática”, “Estado comunitario” e “iniciativa privada”.  Las expresiones “comunidad internacional” y “crecimiento económico” solo están en el top 10 de Uribe y de Santos. 
+
+Por otro lado, en las componentes conexas de las redes creadas a partir de los bigramas de cada discurso se observa que, en el caso de Petro, el nodo más importante es Colombia y a partir de él hace una descripción del país y de sus necesidades ambientales y económicas. En la de Duque se tratan diversos temas, su representación e implicaciones; temas como equidad, legalidad y emprendimiento.  Las componentes conexas del grafo de Santos y de Uribe son mucho más grandes puesto que se están considerando dos discursos en cada uno. Al limitar la interpretación a los bigramas de frecuencia mayor a dos se observan temáticas como prosperidad social, fuerzas armadas y avance económico en las alocuciones de Santos y como inversión social, crecimiento económico y seguridad democrática en los de Uribe. 
+
+Por último, con respecto a las estadísticas de las componentes gigantes de cada grafo se observa que las densidades de los mismos son similares, excepto por el de Uribe que tiene una densidad mayor.  Solo hay transitividad en los discursos de Santos y de Uribe. Medidas como la asortatividad y la media del grado son similares para los grafos de Petro y de Duque y para los de Santos y los de Uribe (las medidas difieren entre las parejas); lo mismo sucede con la distancia geodésica media, aunque esta es mayor para el caso de Santos. Todo esto indica que los discursos más similares entre sí, en relación con estas estadísticas, son el de Petro y el de Duque. De estos difieren los de Santos y los de Uribe, los cuales tienen parecidos entre ellos y mayores medidas, cosa que puede estar ocasionada por el hecho de tratarse de dos discursos unificados en estos dos casos y por el tiempo y el contexto en el que fueron escritos. 
+
+# Skip-grams
+
+Otra forma de realizar el análisis de los bigramas es por medio de los skip-gramas. Método en el cual se crean parejas de palabras omitiendo una palabra de por medio.
+
+```{r}
+#tokenizar en skip-gram
+text_petro %>%
+  unnest_tokens(tbl = ., input = text, output = skipgram, token = "skip_ngrams", n = 2) %>%
+  filter(!is.na(skipgram)) -> text_petro_skip
+#dim(text_petro_skip)
+
+text_duque %>%
+  unnest_tokens(tbl = ., input = text, output = skipgram, token = "skip_ngrams", n = 2) %>%
+  filter(!is.na(skipgram)) -> text_duque_skip
+#dim(text_duque_skip)
+
+text_santos %>%
+  unnest_tokens(tbl = ., input = text, output = skipgram, token = "skip_ngrams", n = 2) %>%
+  filter(!is.na(skipgram)) -> text_santos_skip
+#dim(text_santos_skip)
+
+text_uribe %>%
+  unnest_tokens(tbl = ., input = text, output = skipgram, token = "skip_ngrams", n = 2) %>%
+  filter(!is.na(skipgram)) -> text_uribe_skip
+#dim(text_uribe_skip)
+```
+
+Lo anterior almacena primero cada palabra, luego los bigramas usuales y por último el bigrama obtenido de eliminar la palabra de por medio. De este modo, se hace el conteo de palabras en cada fila, para eliminar los unigramas que ya fueron analizados anteriormente.  
+
+```{r}
+suppressMessages(suppressWarnings(library(ngram)))
+# contar palabras en cada skip-gram
+text_petro_skip$num_words <- text_petro_skip$skipgram %>% 
+  map_int(.f = ~ wordcount(.x))
+text_duque_skip$num_words <- text_duque_skip$skipgram %>% 
+  map_int(.f = ~ wordcount(.x))
+text_santos_skip$num_words <- text_santos_skip$skipgram %>% 
+  map_int(.f = ~ wordcount(.x))
+text_uribe_skip$num_words <- text_uribe_skip$skipgram %>% 
+  map_int(.f = ~ wordcount(.x))
+
+# remover unigramas
+text_petro_skip %<>% 
+  filter(num_words == 2) %>% 
+  select(-num_words)
+dim(text_petro_skip)
+
+text_duque_skip %<>% 
+  filter(num_words == 2) %>% 
+  select(-num_words)
+dim(text_duque_skip)
+
+text_santos_skip %<>% 
+  filter(num_words == 2) %>% 
+  select(-num_words)
+dim(text_santos_skip)
+
+text_uribe_skip %<>% 
+  filter(num_words == 2) %>% 
+  select(-num_words)
+dim(text_uribe_skip)
+```
+
+Una vez más, se decartan todos los registros que contengan alguna *stop word*, y simultáneamente se eliminan los registros que contenían algún número.
+
+```{r}
+##### omitir stop words
+text_petro_skip %>%
+  separate(skipgram, c("word1", "word2"), sep = " ") %>%
+  filter(!grepl(pattern = '[0-9]', x = word1)) %>%
+  filter(!grepl(pattern = '[0-9]', x = word2)) %>%
+  filter(!word1 %in% stop_words_es$word) %>%
+  filter(!word2 %in% stop_words_es$word) %>%
+  mutate(word1 = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word1)) %>%
+  mutate(word2 = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word2)) %>%
+  filter(!is.na(word1)) %>% 
+  filter(!is.na(word2)) %>%
+  count(word1, word2, sort = TRUE) %>%
+  rename(weight = n) -> text_petro_skip_counts
+#dim(text_petro_skip_counts)
+
+text_duque_skip %>%
+  separate(skipgram, c("word1", "word2"), sep = " ") %>%
+  filter(!grepl(pattern = '[0-9]', x = word1)) %>%
+  filter(!grepl(pattern = '[0-9]', x = word2)) %>%
+  filter(!word1 %in% stop_words_es$word) %>%
+  filter(!word2 %in% stop_words_es$word) %>%
+  mutate(word1 = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word1)) %>%
+  mutate(word2 = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word2)) %>%
+  filter(!is.na(word1)) %>% 
+  filter(!is.na(word2)) %>%
+  count(word1, word2, sort = TRUE) %>%
+  rename(weight = n) -> text_duque_skip_counts
+#dim(text_duque_skip_counts)
+
+text_santos_skip %>%
+  separate(skipgram, c("word1", "word2"), sep = " ") %>%
+  filter(!grepl(pattern = '[0-9]', x = word1)) %>%
+  filter(!grepl(pattern = '[0-9]', x = word2)) %>%
+  filter(!word1 %in% stop_words_es$word) %>%
+  filter(!word2 %in% stop_words_es$word) %>%
+  mutate(word1 = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word1)) %>%
+  mutate(word2 = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word2)) %>%
+  filter(!is.na(word1)) %>% 
+  filter(!is.na(word2)) %>%
+  count(word1, word2, sort = TRUE) %>%
+  rename(weight = n) -> text_santos_skip_counts
+#dim(text_santos_skip_counts)
+
+text_uribe_skip %>%
+  separate(skipgram, c("word1", "word2"), sep = " ") %>%
+  filter(!grepl(pattern = '[0-9]', x = word1)) %>%
+  filter(!grepl(pattern = '[0-9]', x = word2)) %>%
+  filter(!word1 %in% stop_words_es$word) %>%
+  filter(!word2 %in% stop_words_es$word) %>%
+  mutate(word1 = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word1)) %>%
+  mutate(word2 = chartr(old = names(replacement_list) %>% str_c(collapse = ''), 
+                       new = replacement_list %>% str_c(collapse = ''),
+                       x = word2)) %>%
+  filter(!is.na(word1)) %>% 
+  filter(!is.na(word2)) %>%
+  count(word1, word2, sort = TRUE) %>%
+  rename(weight = n) -> text_uribe_skip_counts
+#dim(text_uribe_skip_counts)
+```
+
+Ahora, se crean los grafos de los discursos con base en los skipgramas. A continuación se grafica la componente conexa más grande en cada discurso.
+
+```{r}
+### petro #########################
+g2_petro <- text_petro_skip_counts %>%
+  filter(weight > 0) %>%
+  graph_from_data_frame(directed = FALSE)
+g2_petro <- igraph::simplify(g2_petro)
+V(g2_petro)$cluster <- clusters(graph = g2_petro)$membership
+gcc2_petro <- induced_subgraph(graph = g2_petro, vids = which(V(g2_petro)$cluster == which.max(clusters(graph = g2_petro)$csize)))
+
+### duque #########################
+g2_duque <- text_duque_skip_counts %>%
+  filter(weight > 0) %>%
+  graph_from_data_frame(directed = FALSE)
+g2_duque <- igraph::simplify(g2_duque)
+V(g2_duque)$cluster <- clusters(graph = g2_duque)$membership
+gcc2_duque <- induced_subgraph(graph = g2_duque, vids = which(V(g2_duque)$cluster == which.max(clusters(graph = g2_duque)$csize)))
+
+### santos #########################
+g2_santos <- text_santos_skip_counts %>%
+  filter(weight > 0) %>%
+  graph_from_data_frame(directed = FALSE)
+g2_santos <- igraph::simplify(g2_santos)
+V(g2_santos)$cluster <- clusters(graph = g2_santos)$membership
+gcc2_santos <- induced_subgraph(graph = g2_santos, vids = which(V(g2_santos)$cluster == which.max(clusters(graph = g2_santos)$csize)))
+
+### uribe #########################
+g2_uribe <- text_uribe_skip_counts %>%
+  filter(weight > 0) %>%
+  graph_from_data_frame(directed = FALSE)
+g2_uribe <- igraph::simplify(g2_uribe)
+V(g2_uribe)$cluster <- clusters(graph = g2_uribe)$membership
+gcc2_uribe <- induced_subgraph(graph = g2_uribe, vids = which(V(g2_uribe)$cluster == which.max(clusters(graph = g2_uribe)$csize)))
+```
+
+
+```{r, fig.width=12, fig.height=12, fig.align='center', echo=FALSE}
+par(mfrow = c(2,2), mar = c(1,1,2,1), mgp = c(1,1,1), cex.main=2)
+# visualización
+set.seed(176)
+plot(gcc2_petro, layout = layout_with_drl, vertex.color = adjustcolor('#FF6347', 0.1), vertex.frame.color = '#FF6347', vertex.size = strength(gcc2_petro), vertex.label = NA, main="Petro",edge.color="#EECFA1")
+title(main = "Componente conexa", outer = T, line = -1)
+
+plot(gcc2_duque, layout = layout_with_drl, vertex.color = adjustcolor('#FF6347', 0.1), vertex.frame.color = '#FF6347', vertex.size = strength(gcc2_duque), vertex.label = NA, main="Duque",edge.color="#EECFA1")
+
+plot(gcc2_santos, layout = layout_with_drl, vertex.color = adjustcolor('#FF6347', 0.1), vertex.frame.color = '#FF6347', vertex.size = strength(gcc2_santos), vertex.label = NA, main="Santos",edge.color="#EECFA1")
+
+plot(gcc2_uribe, layout = layout_with_drl, vertex.color = adjustcolor('#FF6347', 0.1), vertex.frame.color = '#FF6347', vertex.size = strength(gcc2_uribe), vertex.label = NA, main="Uribe",edge.color="#EECFA1")
+```
+
+Nuevamente se calculan las principales estadísticas descriptivas para estas nuevas redes, con el mismo propósito interpretativo.
+
+```{r, include=FALSE}
+tab <- cbind(
+  c(mean_distance(gcc2_petro), mean(degree(gcc2_petro)), sd(degree(gcc2_petro)), clique.number(gcc2_petro), edge_density(gcc2_petro), transitivity(gcc2_petro), assortativity_degree(gcc2_petro)),
+  c(mean_distance(gcc_duque), mean(degree(gcc2_duque)), sd(degree(gcc2_duque)), clique.number(gcc2_duque), edge_density(gcc2_duque), transitivity(gcc2_duque), assortativity_degree(gcc2_duque)),
+  c(mean_distance(gcc2_santos), mean(degree(gcc2_santos)), sd(degree(gcc2_santos)), clique.number(gcc2_santos), edge_density(gcc2_santos), transitivity(gcc2_santos), assortativity_degree(gcc2_santos)),
+  c(mean_distance(gcc_uribe), mean(degree(gcc2_uribe)), sd(degree(gcc2_uribe)), clique.number(gcc2_uribe), edge_density(gcc2_uribe), transitivity(gcc2_uribe), assortativity_degree(gcc2_uribe))
+)
+rownames(tab) <- c("Dist. media","Grado media","Grado desviación","Número clan","Densidad","Transitividad","Asortatividad")
+colnames(tab) <- c("Petro","Duque","Santos","Uribe")
+
+library(xtable)
+print(xtable(tab,align=c("c","c","c","c","c")), type = "html")
+```
+<table border=2>
+<tr> <th>  </th> <th> Petro </th> <th> Duque </th> <th> Santos </th> <th> Uribe </th>  </tr>
+  <tr> <td align="center"> Dist. media </td> <td align="center"> 8.61 </td> <td align="center"> 5.16 </td> <td align="center"> 7.13 </td> <td align="center"> 9.89 </td> </tr>
+  <tr> <td align="center"> Grado media </td> <td align="center"> 2.31 </td> <td align="center"> 2.38 </td> <td align="center"> 2.72 </td> <td align="center"> 2.60 </td> </tr>
+  <tr> <td align="center"> Grado desviación </td> <td align="center"> 2.25 </td> <td align="center"> 2.17 </td> <td align="center"> 3.13 </td> <td align="center"> 2.48 </td> </tr>
+  <tr> <td align="center"> Número clan </td> <td align="center"> 3.00 </td> <td align="center"> 3.00 </td> <td align="center"> 4.00 </td> <td align="center"> 3.00 </td> </tr>
+  <tr> <td align="center"> Densidad </td> <td align="center"> 0.00 </td> <td align="center"> 0.00 </td> <td align="center"> 0.00 </td> <td align="center"> 0.00 </td> </tr>
+  <tr> <td align="center"> Transitividad </td> <td align="center"> 0.06 </td> <td align="center"> 0.06 </td> <td align="center"> 0.06 </td> <td align="center"> 0.08 </td> </tr>
+  <tr> <td align="center"> Asortatividad </td> <td align="center"> -0.08 </td> <td align="center"> -0.04 </td> <td align="center"> -0.05 </td> <td align="center"> 0.01 </td> </tr>
+   </table>
+   
+## Palabras más importantes
+
+Una ventaja de realizar el análisis de redes con los bigramas y skipgramas, es que podemos hacer una clasificación del top 10 de las palabras más importantes en cada alocución, por medio de medidas como la centralidad propia de los vértices. Cabe aclarar que este tipo de centralidad nos mostrará las palabras de mayor importancia de acuerdo a la importancia de las demás palabras con las que se relacionan.  
+
+### Petro: Top 10 {-}
+
+```{r, echo = F}
+centralidad_petro <- tibble(word = V(gcc2_petro)$name, eigen = eigen_centrality(gcc2_petro, scale = T)$vector)
+centralidad_petro %>%
+  arrange(desc(eigen)) %>%
+  head(n = 10)
+```
+
+
+### Duque: Top 10 {-}
+
+```{r, echo = F}
+centralidad_duque <- tibble(word = V(gcc2_duque)$name, eigen = eigen_centrality(gcc2_duque, scale = T)$vector)
+centralidad_duque %>%
+  arrange(desc(eigen)) %>%
+  head(n = 10)
+```
+
+### Santos: Top 10 {-}
+
+```{r, echo = F}
+centralidad_santos <- tibble(word = V(gcc2_santos)$name, eigen = eigen_centrality(gcc2_santos, scale = T)$vector)
+centralidad_santos %>%
+  arrange(desc(eigen)) %>%
+  head(n = 10)
+```
+
+### Uribe: Top 10 {-}
+
+```{r, echo = F}
+centralidad_uribe <- tibble(word = V(gcc2_uribe)$name, eigen = eigen_centrality(gcc2_uribe, scale = T)$vector)
+centralidad_uribe %>%
+  arrange(desc(eigen)) %>%
+  head(n = 10)
+```
+
+
+## Agrupamiento
+
+Finalmente, para concluir el análisis a los discursos se realiza un agrupamiento en cada una de las componentes gigantes de estos últimos grafos creados a partir de los skip-gramas. Los grupos resultantes son útiles para identificar los distintos tipos de temáticas dentro de los discursos. Adicionalmente, se observa el top 5 de palabras más importantes, de acuerdo a la centralidad propia, dentro del grupo con mayor cantidad de vértices en cada agrupamiento.
+
+```{r, include=F}
+kc_petro <- igraph::cluster_fast_greedy(gcc2_petro)
+kc_duque <- igraph::cluster_fast_greedy(gcc2_duque)
+kc_santos <- igraph::cluster_fast_greedy(gcc2_santos)
+kc_uribe <- igraph::cluster_fast_greedy(gcc2_uribe)
+tab <- cbind(
+  c(length(kc_petro), min(sizes(kc_petro)), max(sizes(kc_petro))),
+  c(length(kc_duque), min(sizes(kc_duque)), max(sizes(kc_duque))),
+  c(length(kc_santos), min(sizes(kc_santos)), max(sizes(kc_santos))),
+  c(length(kc_uribe), min(sizes(kc_uribe)), max(sizes(kc_uribe)))
+)
+rownames(tab) <- c("Tamaño partición", "Tamaño grupo menor", "Tamaño grupo mayor")
+colnames(tab) <- c("Petro","Duque","Santos","Uribe")
+print(xtable(tab,align=c("c","c","c","c","c")), type = "html")
+```
+<table border=2>
+<tr> <th>  </th> <th> Petro </th> <th> Duque </th> <th> Santos </th> <th> Uribe </th>  </tr>
+  <tr> <td align="center"> Tamaño partición </td> <td align="center">  25 </td> <td align="center">  29 </td> <td align="center">  34 </td> <td align="center">  38 </td> </tr>
+  <tr> <td align="center"> Tamaño grupo menor </td> <td align="center">  10 </td> <td align="center">   5 </td> <td align="center">   4 </td> <td align="center">   5 </td> </tr>
+  <tr> <td align="center"> Tamaño grupo mayor </td> <td align="center">  44 </td> <td align="center">  69 </td> <td align="center"> 147 </td> <td align="center">  99 </td> </tr>
+   </table>
+
+```{r, fig.width=12, fig.height=12, fig.align='center', echo = F}
+suppressMessages(suppressWarnings(library(RColorBrewer)))
+cols <- c(brewer.pal(9,"Set1")[1:9],brewer.pal(8,"Set2")[1:7],brewer.pal(8,"Set2")[1:7],brewer.pal(12,"Set3")[1:3])
+par(mfrow = c(2,2), mar = c(1,1,2,1), mgp = c(1,1,1))
+set.seed(176)
+
+plot(gcc2_petro, layout = layout_with_drl, vertex.color = adjustcolor(cols[kc_petro$membership], 0.1), vertex.frame.color = cols[kc_petro$membership], vertex.size = 1.6*strength(gcc2_petro), vertex.label = NA, main = "Petro")
+
+plot(gcc2_duque, layout = layout_with_drl, vertex.color = adjustcolor(cols[kc_duque$membership], 0.1), vertex.frame.color = cols[kc_duque$membership], vertex.size = 1.6*strength(gcc2_duque), vertex.label = NA, main = "Duque")
+
+plot(gcc2_santos, layout = layout_with_drl, vertex.color = adjustcolor(cols[kc_santos$membership], 0.1), vertex.frame.color = cols[kc_petro$membership], vertex.size = 1.6*strength(gcc2_santos), vertex.label = NA, main = "Santos")
+
+plot(gcc2_uribe, layout = layout_with_drl, vertex.color = adjustcolor(cols[kc_uribe$membership], 0.1), vertex.frame.color = cols[kc_uribe$membership], vertex.size = 1.6*strength(gcc2_uribe), vertex.label = NA, main = "Uribe")
+```
+
+### Petro: Top 5 grupo mayor {-}
+
+```{r, echo=F}
+V(gcc2_petro)$membership <- kc_petro$membership
+grupos_petro <- tibble(word = V(gcc2_petro) %>% names(), cluster = V(gcc2_petro)$membership, eigen = eigen_centrality(gcc2_petro, scale = T)$vector)
+grupos_petro %>%
+  filter(cluster == which.max(table(kc_petro$membership))) %>%
+  arrange(desc(eigen)) %>%
+  head(n = 5)
+```
+
+### Duque: Top 5 grupo mayor {-}
+
+```{r, echo=F}
+V(gcc2_duque)$membership <- kc_duque$membership
+grupos_duque <- tibble(word = V(gcc2_duque) %>% names(), cluster = V(gcc2_duque)$membership, eigen = eigen_centrality(gcc2_duque, scale = T)$vector)
+grupos_duque %>%
+  filter(cluster == which.max(table(kc_duque$membership))) %>%
+  arrange(desc(eigen)) %>%
+  head(n = 5)
+```
+
+### Santos: Top 5 grupo mayor {-}
+
+```{r, echo=F}
+V(gcc2_santos)$membership <- kc_petro$membership
+grupos_santos <- tibble(word = V(gcc2_santos) %>% names(), cluster = V(gcc2_santos)$membership, eigen = eigen_centrality(gcc2_santos, scale = T)$vector)
+grupos_santos %>%
+  filter(cluster == which.max(table(kc_santos$membership))) %>%
+  arrange(desc(eigen)) %>%
+  head(n = 5)
+```
+
+### Uribe: Top 5 grupo mayor {-}
+
+```{r, echo=F}
+V(gcc2_uribe)$membership <- kc_uribe$membership
+grupos_uribe <- tibble(word = V(gcc2_uribe) %>% names(), cluster = V(gcc2_uribe)$membership, eigen = eigen_centrality(gcc2_uribe, scale = T)$vector)
+grupos_uribe %>%
+  filter(cluster == which.max(table(kc_uribe$membership))) %>%
+  arrange(desc(eigen)) %>%
+  head(n = 5)
+```
+
+# Conclusiones Skip-gramas
+
+Al añadir a las unidades de análisis todos los skip-gramas, se incrementa claramente el tamaño de la componente conexa en cada discurso. Comparando las estadísticas descriptivas contra las obtenidas en las componentes gigantes de únicamente los bigramas, en general, aumenta el promedio y la desviación del grado, al igual que el número clan y, considerablemente, la transitividad, lo cual es acorde al aumento de las relaciones generadas por los skipgramas. Sin embargo, la densidad disminuye y la asortatividad con respecto al grado es más cercana a cero, cosa que puede ser un indicador de que, aunque hayan frases compuestas de las mismas palabras con mucha frecuencia a lo largo del discurso, estas son utilizadas para hablar sobre distintos temas particulares, al relacionarse de igual manera con otras palabras que no son muy frecuentes, marcando un patrón de cohesión y coherencia en las alocuciones.
+
+Por otro lado, al hacer la revisión de las palabras más importantes, se muestran diferencias más evidentes entre los discursos. Se observa un panorama más sentimentalista en el texto de Petro al usar palabras como “soñamos”, “corazon” y  “padecer”; la aparición de la palabra “mujeres” como la segunda más importante confirma la diferencia en cuanto a inclusión mencionada anteriormente. Para Duque nuevamente se evidencian actitudes emprendedoras denotadas en palabras como “construir”, “gobernar” y “futuro”; además, resalta por mencionar a los jóvenes. Para Santos no se distingue un tema especial, más allá de que se diferencia por intensificar el uso de la palabra “gracias” y “Dios”.  Finalmente, Uribe muestra palabras más singulares y de carácter fuerte como “seguridad”, “Autoridad”, “democratica” y “estado”.
+
+Por último, los resultados del agrupamiento en las componentes gigantes señalan que son muchos los temas tratados en todas las alocuciones y que, naturalmente, es mayor la cantidad de particiones para Santos y Uribe que para Petro y Duque, puesto que, en dos discursos unificados, el posible número de temas a tratar es mayor, aunque el tamaño de la mayor partición en cada texto varía considerablemente.
+
+ Además, al hacer una primera revisión a la lista de palabras más importantes dentro de la partición más grande en cada texto, se aprecia la misma tendencia de temáticas e intensión que se ha interpretado en los procedimientos anteriores.
+
+Para finalizar y reuniendo todos lo resultados e interpretaciones obtenidas con el análisis, se hallaron varias similitudes en lo que respecta a la estructura de estos. Sin embargo, son claros los contrates en cuanto a las temáticas en las que se hace énfasis y en ciertas expresiones que marcan la intensión de cada discurso, evidenciando que las diferencias en entre las visiones y prioridades de cada mandatario, las cuales pueden dar sentido a sus acciones durante su respectivo gobierno.
+
+
+# Referencias
+
+
+```{r, eval = TRUE, echo=FALSE, out.width="25%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("silgebookcover.png")
+```
+
+```{r, eval = TRUE, echo=FALSE, out.width="25%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("KCbookcover1.jpg")
+```

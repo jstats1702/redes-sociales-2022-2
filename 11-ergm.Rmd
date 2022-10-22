@@ -1,0 +1,703 @@
+---
+title: "Modelos de grafos aleatorios exponenciales"
+author: 
+- Juan Sosa PhD
+- Webpage https://sites.google.com/view/juansosa/ 
+- YouTube https://www.youtube.com/c/JuanSosa1702 
+- GitHub  https://github.com/jstats1702 
+- Rpubs   https://rpubs.com/jstats1702
+date: ""
+output:
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Introducción
+
+Los **modelos de grafos aleatorios exponenciales** (*exponential random graph models*, ERGMs) o **modelos $p^*$** se especifican de manera análoga a los **modelos lineales generalizados** (*generalized linear models*, GLMs).
+
+***Wasserman, S. & Pattison, P. (1996), ‘Logit models and logistic regressions for social networks:I. an introduction to markov graphs and p*’, Psychometrika 61(3), 401–425.***
+
+***Frank, O. & Strauss, D. (1986), ‘Markov graphs’, Journal of the American Statistical Association 81(395), 832–842.***
+
+https://cran.r-project.org/web/packages/ergm/vignettes/ergm.pdf
+
+
+Un ERGM es un modelo de la forma
+$$
+p(\mathbf{y}\mid\boldsymbol{\theta}) = \frac{1}{\kappa}\,\exp{\left\{ \boldsymbol{\theta}^{\textsf{T}}\,\boldsymbol{\mathsf{g}}(\mathbf{y}) \right\}}
+$$
+donde:
+
+- $\mathbf{y}=[y_{i,j}]$ es la realización de una matriz de adyacencia aleatoria $\mathbf{Y}=[Y_{i,j}]$ asociada con una **red binaria simple no dirigida**.
+- $\boldsymbol{\mathsf{g}}(\mathbf{y}) = [\mathsf{g}_1(\mathbf{y}),\ldots,\mathsf{g}_K(\mathbf{y})]^{\textsf{T}}$ es un vector $K$ dimensional de **estadísticos** de $\mathbf{y}$ (variables endógenas) y/o funciones (conocidas) de $\mathbf{y}$ y **atributos nodales** $\mathbf{x}$ (variables exógenas).
+- $\boldsymbol{\theta} = [\theta_1,\ldots,\theta_K]^{\textsf{T}}$ es un vector $K$ dimensional de **parámetros desconocidos**. 
+- $\kappa\equiv\kappa(\boldsymbol{\theta})$ es la **constante de normalización**, $\kappa = \sum_{\mathbf{y}} \exp{\left\{ \boldsymbol{\theta}^{\textsf{T}}\,\boldsymbol{\mathsf{g}}(\mathbf{y}) \right\}}$.
+
+Los coeficientes $\boldsymbol{\theta}$ representan el **tamaño y la dirección de los efectos** de $\boldsymbol{\mathsf{g}}(\mathbf{y})$ sobre la probabilidad de observar la red.
+
+La probabilidad del grafo completo se puede volver a expresar en **escala logit** en términos de las **probabilidades condicionales de observar una arista entre dos actores manteniendo el resto de la red fija**:
+$$
+\text{logit}\,\textsf{Pr}(y_{i,j}=1\mid\mathbf{y}_{-(i,j)}) =  \boldsymbol{\theta}^{\textsf{T}}\,\boldsymbol{\delta}_{i,j}(\mathbf{y})
+$$
+donde:
+
+- $\mathbf{y}_{-(i,j)}$ corresponde a $\mathbf{y}$ **exceptuando la observación** $y_{i,j}$.
+- $\boldsymbol{\delta}_{i,j}(\mathbf{y})$ es la **estadística de cambio** que se calcula como el valor $\boldsymbol{\mathsf{g}}(\mathbf{y})$ cuando $y_{i,j}=1$ menos el valor $\boldsymbol{\mathsf{g}}(\mathbf{y})$ cuando $y_{i,j}=0$, manteniendo **constante** todos los demás valores de $\mathbf{y}$.
+- Los **coeficientes** se interpretan como la **contribución de los términos a la probabilidad (en escala logit) de observar una arista particular**, condicionado a que todas las demás díadas permanezcan iguales.
+
+
+
+# Ajuste del modelo
+
+El **estimador de máxima verosimilitud** (*maximum likelihood estimator*, MLE) de $\boldsymbol{\theta}$ es
+$$
+\hat{\boldsymbol{\theta}}_{\text{MLE}} = \text{arg max}_{\boldsymbol{\theta}}\, \ell(\boldsymbol{\theta}) = \text{arg max}_{\boldsymbol{\theta}}\, \left(\boldsymbol{\theta}^{\textsf{T}}\,\boldsymbol{\mathsf{g}}(\mathbf{y}) - \psi(\boldsymbol{\theta})\right)
+$$
+donde $\psi(\boldsymbol{\theta}) = \log \kappa(\boldsymbol{\theta})$.
+
+La función $\psi(\boldsymbol{\theta})$ **no se puede evaluar explícitamente**, dado que involucra una suma sobre $2^{\binom{n}{2}}$ términos (uno para cada posible valor de $\mathbf{y}$), para cada $\boldsymbol{\theta}$.
+
+El paquete `ergm` utiliza una versión **estimación de máxima verosimilitud** por medio de **cadenas de Markov de Monte Carlo** (*Markoc chain Monte Carlo*, MCMC).
+
+- ***Geyer, C. J., & Thompson, E. A. (1992). Constrained Monte Carlo maximum likelihood for dependent data. Journal of the Royal Statistical Society: Series B (Methodological), 54(3), 657-683.***
+- ***Hunter, D. R., & Handcock, M. S. (2006). Inference in curved exponential family models for networks. Journal of Computational and Graphical Statistics, 15(3), 565-583.***
+
+
+
+# Modelo Bernoulli
+
+Para cada par de vértices la presencia o ausencia de una arista es independiente del estado de otras posibles aristas:
+$$
+p(\mathbf{y}\mid\boldsymbol{\theta}) = \frac{1}{\kappa}\,\exp{\left\{ \sum_{i<j} \theta_{i,j}\, y_{i,j} \right\}}\,.
+$$
+Además, asumiendo $\theta_{i,j}\equiv\theta$, i.e., **homogeneidad relacional** a través de toda la red: 
+$$
+p(\mathbf{y}\mid\boldsymbol{\theta}) = \frac{1}{\kappa}\,\exp{\left\{ \theta\, S(\mathbf{y}) \right\}}
+$$
+donde $S(\mathbf{y}) = \sum_{i<j}\, y_{i,j}$ es el **número de aristas** del grafo. Esto es, el log-odds de observar $\mathbf{y}$ es proporcional al número de aristas en el grafo.
+
+Simplificando, se tiene que el modelo resultante es equivalente a:
+$$
+y_{i,j}\mid\theta\stackrel{\text{iid}}{\sim}\textsf{Bernoulli}(\textsf{expit}(\theta))\,, \qquad i < j\,,
+$$
+donde $\textsf{expit}(x) = 1/(1+\exp(-x))$ es la función inversa de la función $\textsf{logit}(x) = \log(x/(1-x))$.
+
+
+`edges` en `ergm`.
+
+
+## Ejemplo: Familias Florentinas
+
+Lazos matrimoniales y comerciales entre familias florentinas del Renacimiento.
+
+***Padgett, John F. 1994. Marriage and Elite Structure in Renaissance Florence, 1282-1500. Paper delivered to the Social Science History Association.***
+
+
+```{r}
+# paquetes
+suppressMessages(suppressWarnings(library(ergm)))
+# datos
+data(florentine)
+flomarriage
+# clase
+class(flomarriage)
+```
+
+
+```{r, fig.width=7, fig.height=6, fig.align='center'}
+# grafico
+par(mfrow = c(1,1), mar = 0.2*c(1,1,1,1))
+set.seed(42)
+plot(flomarriage, label = network.vertex.names(flomarriage))
+```
+
+
+Usando tamaños de los vértices proporcionales a la riqueza, se observa que parece haber una relación entre la riqueza y la sociabilidad.
+
+
+```{r}
+# formulación del modelo
+ergm_model<- formula(flomarriage ~ edges)
+summary(ergm_model)
+```
+
+```{r}
+# ajuste del modelo
+set.seed(42)
+ergm_fit <- ergm(formula = ergm_model)
+summary(ergm_fit)
+```
+
+
+```{r}
+# estadístico
+ergm_fit$nw.stats
+# coeficiente
+coefficients(ergm_fit)
+# error estándar
+sqrt(vcov(ergm_fit))
+# z value
+-1.6094/0.2449
+# H0: par = 0
+2*pnorm(q = -6.571662)
+# Null model loglik
+ergm_fit$null.lik
+# Null Deviance
+-2*as.numeric(ergm_fit$null.lik)
+# Model 1 loglik
+ergm_fit$mle.lik
+# Residual Deviance
+-2*as.numeric(ergm_fit$mle.lik)
+# AIC = -2*loglik + 2*k
+-2*as.numeric(ergm_fit$mple.lik) + 2*1 
+ # BIC = -2loglik + log(n*(n-1)/2)*k
+-2*as.numeric(ergm_fit$mple.lik) + log(16*15/2)*1
+```
+
+
+```{r}
+# mas componentes 
+names(ergm_fit)
+``` 
+
+
+```{r}
+# probabilidad
+expit <- function(x) 1/(1+exp(-x))
+expit(-1.609438)
+# densidad de la red
+A <- as.matrix.network.adjacency(x = flomarriage)
+g <- igraph::graph_from_adjacency_matrix(adjmatrix = A, mode = "undirected")
+igraph::edge_density(graph = g)
+```
+
+
+El modelo `NULL` es el modelo de Erdös-Rényi con $\theta=0.5$.
+
+
+La probabilidad condicional en escala logit (log-odds) de que una arista esté presente entre dos actores, manteniendo fija el resto de la red, es 
+$$
+\text{logit}\,\textsf{Pr}(y_{i,j}=1\mid\mathbf{y}_{-(i,j)}) = -1.609438 \cdot\text{cambio en el n. de aristas} = -1.609438 \cdot 1 = -1.609438\,.
+$$
+En escala natural, la probabilidad correspondiente es $\text{expit}(-1.609438 ) = 0.1666667$.
+
+
+
+```{r}
+# anova
+anova(ergm_fit)
+```
+
+
+```{r}
+# Model 1 Deviance
+166.3553 - 108.1347
+# H0: Null model
+pchisq(q = 58.221, df = 1, lower.tail = F) 
+```
+
+El modelo Bernoulli resulta ser significativo. 
+
+
+# Modelo de estrellas y triángulos
+
+Se quiere incorporar **estadísticos de orden superior** asociados con la **estructura global** del grafo, como el **número de $k$-estrellas** ($k+1$ vértices y $k$ aristas) $S_k(\mathbf{y})$, $S_1(\mathbf{y})$ es el número de aristas, y el **número de triángulos** $T(\mathbf{y})$:
+$$
+p(\mathbf{y}\mid\boldsymbol{\theta}) = \frac{1}{\kappa}\,\exp{\left\{ \sum_{k=1}^{n-1}\theta_k\,S_k(\mathbf{y}) + \theta_T\,T(\mathbf{y}) \right\}}
+$$
+donde $n$ es el orden del grafo.
+
+
+```{r, eval = TRUE, echo=FALSE, out.width="50%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("stars.png")
+```
+
+
+```{r, eval = TRUE, echo=FALSE, out.width="10%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("triangle.png")
+```
+
+
+Comúnmente se ajusta considerando $S_1(\mathbf{y})$, $S_2(\mathbf{y})$, $S_3(\mathbf{y})$, y $T(\mathbf{y})$.
+
+El estado de cualquier triángulo que contenga la díada $y_{i,j}$ depende del estado de las díadas de la forma $y_{i,k}$ y $y_{j,k}$. Por lo tanto, las **díadas no son probabilísticamente independientes** entre sí.
+
+En contraste con la independencia del modelo de Bernoulli, produce grafos con ciertos tipos de **dependencia entre las aristas** (dependencia Markoviana, dos aristas son dependientes siempre que compartan un vértice, dadas todas las demás aristas posibles). 
+
+El modelo sufre de **problemas de degeneración** (distribución de probabilidad que coloca una cantidad excesivamente grande de su masa en un conjunto de resultados pequeño).
+
+`kstar` y `triangle` en `ergm`.
+
+
+## Ejemplo: Familias Florentinas (cont.)
+
+
+```{r}
+# formulación del modelo
+ergm_model <- formula(flomarriage ~ edges + triangles)
+summary(ergm_model)
+```
+
+
+```{r}
+# ajuste del modelo
+set.seed(42)
+ergm_fit <- ergm(formula = ergm_model)
+summary(ergm_fit)
+```
+
+```{r}
+# probabilidades
+expit(-1.6862)
+expit(-1.5296)
+```
+
+
+La probabilidad condicional en escala logit (log-odds) de que una arista esté presente entre dos actores, manteniendo fija el resto de la red, es
+$$
+\text{logit}\,\textsf{Pr}(y_{i,j}=1\mid\mathbf{y}_{-(i,j)}) = -1.6862\cdot\text{cambio en el n. de aristas} + 0.1566\cdot\text{cambio en el n. de triángulos}\,.
+$$
+
+- Para una arista que no cree ningún triángulo, el log-odds es $-1.6862$.
+- Para una arista que cree un triángulo, el log-odds es $-1.6862 + 0.1566 = -1.5296$.
+- Las probabilidades correspondientes son $0.1562762$ y $0.1780522$.
+
+
+```{r}
+# anova
+anova(ergm_fit)
+```
+
+
+
+
+## Ejemplo: Sampson
+
+Sampson (1969) registró las interacciones sociales entre un grupo de monjes mientras él residía en el claustro. Resultaron de particular interés los datos sobre relaciones de afecto positivo.
+
+Cada monje clasificó sus tres opciones principales (o cuatro, en el caso de empates) en "agrado", de forma que existe una arista dirigida del monje A al monje B si A nombró a B entre sus opciones principales.
+
+***Sampson, S. F. (1968). A novitiate in a period of change: An experimental and case study of relationships, Unpublished Ph.D. dissertation, Department of Sociology, Cornell University.***
+
+
+```{r}
+# datos
+data(samplk)
+samplk3
+```
+
+
+```{r, fig.width=6, fig.height=6, fig.align='center'}
+# grafico
+par(mfrow = c(1,1), mar = 0.2*c(1,1,1,1))
+set.seed(42)
+plot(samplk3, vertex.cex = 2)
+```
+
+
+```{r}
+# formulación del modelo
+ergm_model <- formula(samplk3 ~ edges + mutual)
+summary(ergm_model)
+```
+
+
+
+```{r}
+# ajuste del modelo
+set.seed(42)
+ergm_fit <- ergm(formula = ergm_model)
+summary(ergm_fit)
+```
+
+
+```{r}
+# probabilidades
+expit(0.1449)
+expit(-2.1707)
+```
+
+
+- Hay un efecto de reciprocidad significativo. 
+- Los coeficientes asociados con la densidad y la reciprocidad se cancelan aproximadamente para una arista mutua, lo que corresponde a una probabilidad de $0.5361618$.
+- Para una arista no mutua se tiene un log-odds condicional de $-2.1707$, esto es, una probabilidad del $0.1024127$.
+
+
+```{r}
+# anova
+anova(ergm_fit)
+```
+
+
+
+# Atributos de los vértices
+
+La plausibilidad de que una arista una a dos vértices no solo depende del **estado de las aristas** (0 o 1), sino también de los **atributos de los vértices** (variables exógenas). 
+
+Los atributos de los vértices se pueden incluir en la formulación de un ERGM mediante
+$$
+\boldsymbol{\mathsf{g}}(\mathbf{y},\mathbf{x}) = \sum_{i<j} y_{i,j}\,h(\mathbf{x}_i,\mathbf{x}_j)
+$$
+donde $h(\mathbf{x}_i,\mathbf{x}_j)$ es una **función simétrica** de $\mathbf{x}_i$ y $\mathbf{x}_j$, y $\mathbf{x}_i$ es el vector de atributos observados del vértice $i$.
+
+- Efectos principales: $h(x_i,x_j) = x_i + x_j$. `nodecov` o `nodemain` en `ergm`.
+- Efectos de segundo orden (homofilia): $h(x_i,x_j) = I_{\{x_i=x_j\}}$. `match` en `ergm`.
+- Efectos de segundo orden (homofilia): $h(x_i,x_j) = |x_i - x_j|$. `nodematch` o `absdif` en `ergm`.
+
+
+## Ejemplo: Familias Florentinas (cont.)
+
+La riqueza parecía estar asociada con un mayor grado en esta red:
+
+```{r}
+# atributos
+wealth <- flomarriage %v% 'wealth'
+wealth
+# descripción
+summary(wealth)
+```
+
+```{r, fig.width=7, fig.height=6, fig.align='center'}
+# grafico
+par(mfrow = c(1,1), mar = 0.2*c(1,1,1,1))
+set.seed(42)
+plot(flomarriage, label = network.vertex.names(flomarriage), vertex.cex = wealth/25)
+```
+
+En efecto, hay un efecto positivo de la riqueza sobre la probabilidad de un observar una arista:
+
+```{r}
+# formulación del modelo 
+ergm_model <- formula(flomarriage ~ edges + nodemain('wealth'))
+summary(ergm_model)
+```
+
+```{r}
+# nodecov.wealth
+A <- as.matrix.network.adjacency(x = flomarriage)
+B <- outer(X = wealth, Y = wealth, FUN = "+")
+sum(A*B)/2
+```
+
+
+```{r}
+# ajuste del modelo
+set.seed(42)
+ergm_fit <- ergm(formula = ergm_model)
+summary(ergm_fit)
+```
+
+```{r}
+# probabilidades
+expit(-2.531653)
+expit(0.484503)
+```
+
+La probabilidad condicional en escala logit (log-odds) de que una arista esté presente entre dos actores, manteniendo fija el resto de la red, es
+$$
+\text{logit}\,\textsf{Pr}(y_{i,j}=1\mid\mathbf{y}_{-(i,j)}) = -2.594929\cdot\text{cambio en el n. de aristas} + 0.010546\cdot\text{suma de la riqueza de los dos nodos}
+$$
+
+- Para una arista entre dos nodos con la mínima riqueza, el log-odds condicional es $-2.594929 + 0.010546*(3+3)=-2.531653$.
+- Para una arista entre dos nodos con la máxima riqueza, el log-odds condicional es $-2.594929 + 0.010546*(146+146)=0.484503$.
+- Las probabilidades correspondientes son $0.07366876$ y $0.6188106$.
+
+
+
+```{r}
+# anova
+anova(ergm_fit)
+```
+
+
+## Ejemplo: *AddHealth*
+
+Red de amistades entre estudiantes de una institución educativa observada como parte del estudio *AddHealth*. 
+
+La comunidad escolar se encuentra en una zona rural del oeste de los Estados Unidos, con un alumnado mayoritariamente hispano y nativo americano.
+
+***Resnick M.D., Bearman, P.S., Blum R.W. et al. (1997). Protecting adolescents from harm. Findings from the National Longitudinal Study on Adolescent Health, Journal of the American Medical Association, 278: 823-32.***
+
+Se examina la homofilia en las amistades por grado y raza (atributos discretos).
+
+```{r}
+# datos
+data(faux.mesa.high)
+mesa <- faux.mesa.high
+mesa
+```
+
+
+```{r}
+# grado
+table(mesa %v% 'Grade')
+# raza
+table(mesa %v% 'Race')
+# sexo
+table(mesa %v% 'Sex')
+```
+
+```{r, fig.width=6, fig.height=6, fig.align='center'}
+# grafico
+par(mfrow = c(1,1), mar = 0.2*c(1,1,1,1))
+set.seed(42)
+plot(mesa, vertex.col = 'Grade', vertex.cex = 1.2)
+legend('bottomleft', fill = 7:12, legend = paste('Grade', 7:12), cex = 0.8, bty = "n")
+```
+
+`nodefactor`: 
+
+- Este término agrega múltiples estadísticas al modelo, asociadas con los **valores únicos del atributo**.
+- Las estadísticas corresponden a la **cantidad de veces que aparece un vértice con ese atributo** en una arista de la red.
+- Incluir todos los valores de los atributos es apropiado, porque la suma de todas estas estadísticas es igual al número de aristas y, por lo tanto, surgiría una **dependencia lineal** en cualquier modelo que también incluya `edges`.
+
+```{r}
+# formulación del modelo
+ergm_model <- formula(mesa ~ edges + nodefactor('Grade') + nodematch('Grade', diff=T) + nodefactor('Race') + nodematch('Race', diff=T))
+summary(ergm_model)
+```
+
+**¡Cuidado! Hay varios 0s.**
+
+
+```{r}
+# ajuste del modelo
+set.seed(42)
+ergm_fit <- ergm(formula = ergm_model)
+summary(ergm_fit)
+```
+
+
+Algunos coeficientes dan como resultado `-Inf` dado que:
+
+```{r}
+mixingmatrix(object = mesa, attrname = "Race")
+```
+
+
+```{r}
+# anova
+anova(ergm_fit)
+```
+
+
+
+# Restricciones paramétricas
+
+Con el fin de mejorar el ajuste del modelo se proponen **restricciones** sobre los parámetros de las estrellas  e la forma $\theta_k \propto (-1)^k/\lambda^{k-2}$, para $k\geq 2$ y algún $\lambda\geq 1$. 
+
+Esto combina las $k$-estrellas en un solo **estadístico alternante** (*alternating $k$-star statistic*) de la forma:
+$$
+\textsf{AKS}(\mathbf{y}) = \sum_{k=2}^{n-1} \frac{(-1)^{k}}{\lambda^{k-2}}\,S_k(\mathbf{y})\,,
+$$
+el cual está asociado con un solo parámetro $\theta_{\text{AKS}}$ que tiene en cuenta los efectos de todas las $k$-estrellas simultáneamente.
+
+`altkstar` en `ergm`.
+
+También se puede utilizar el **conteo de grado ponderado geométricamente** (*geometrically weighted degree count*) dado por:
+$$
+\textsf{GWD}(\mathbf{y}) = \sum_{d=0}^{n-1} e^{-\gamma\,d} N_d(\mathbf{y})\,,
+$$
+donde $N_d(\mathbf{y})$ es el número de vértices de grado $d$ y $\gamma>0$.
+
+`gwdegree` o `gwesp` en `ergm`.
+
+
+## Ejemplo: Lazega
+
+Red de relaciones de trabajo colaborativo entre miembros de una firma de abogados.
+
+***Lazega, E. (2001). The collegial phenomenon: The social mechanisms of cooperation among peers in a corporate law partnership. Oxford University Press on Demand.***
+
+
+```{r, fig.height = 6, fig.width = 6, fig.align='center'}
+# datos
+suppressMessages(suppressWarnings(library(sand)))
+data(lazega)
+lazega <- graph_from_data_frame(d = elist.lazega, directed = "F")
+V(lazega)$label <- sub("V", "", V(lazega)$name)
+# grafico
+set.seed(42)
+plot(lazega, vertex.label = NA, vertex.size = 8)
+```
+
+### Preparación de los datos {-}
+
+```{r}
+# datos
+suppressMessages(suppressWarnings(library(sand)))
+data(lazega)
+# matriz de adyacencia
+A <- igraph::as_adjacency_matrix(graph = lazega)
+# atributos (variables exógenas)
+v.attrs <- igraph::as_data_frame(x = lazega, what = "vertices")
+head(v.attrs)
+# formato network 
+lazega.s <- network::as.network(x = as.matrix(A), directed = F)
+# establecer atributos
+network::set.vertex.attribute(x = lazega.s, attrname = "Office",    value = v.attrs$Office)
+network::set.vertex.attribute(x = lazega.s, attrname = "Practice",  value = v.attrs$Practice)
+network::set.vertex.attribute(x = lazega.s, attrname = "Gender",    value = v.attrs$Gender)
+network::set.vertex.attribute(x = lazega.s, attrname = "Seniority", value = v.attrs$Seniority)
+```
+
+### Modelo de estrellas y triángulos {-}
+
+```{r}
+# formulación del modelo
+ergm_model <- formula(lazega.s ~ edges + kstar(2) + kstar(3) + triangle)
+summary(ergm_model)
+```
+
+### Modelo con restricciones paramétricas {-}
+
+$\textsf{GWD}(\mathbf{y})$ con $\gamma = 1$.
+
+```{r}
+# formulación del modelo
+ergm_model <- formula(lazega.s ~ edges + gwesp(decay = 1, fixed = T))
+summary(ergm_model)
+```
+
+### Modelo con variables exógenas {-}
+
+$$
+p(\mathbf{y}\mid\theta_1,\theta_2,\boldsymbol{\beta}) = \frac{1}{\kappa(\theta_1,\theta_2,\boldsymbol{\beta})}\,\exp{\left\{ \theta_1 S_1(\mathbf{y}) + \theta_2\textsf{GWD}(\mathbf{y}) + \boldsymbol{\beta}^{\textsf{T}}\boldsymbol{\mathsf{g}}(\mathbf{y},\mathbf{x}) \right\}}
+$$
+
+```{r}
+# formulación del modelo
+ergm_model <- formula(lazega.s ~ edges + gwesp(decay = 1, fixed = T) + nodemain("Seniority") + nodemain("Practice") + match("Practice") + match("Gender") + match("Office"))
+summary(ergm_model)
+```
+
+```{r}
+# ajuste del modelo
+set.seed(42)
+ergm_fit <- ergm(formula = ergm_model)
+summary(ergm_fit)
+```
+
+```{r}
+# probabilidades
+expit(0.395779)
+expit(0.716355)
+```
+
+
+Hay evidencia de un efecto de transitividad no trivial.
+
+Manteniendo constantes los valores de las otras estadísticas, condicionalmente se tiene que:
+
+- Practicar derecho corporativo, en lugar de litigios, aumenta el odds de cooperación en un factor de $\text{exp}(0.395779) = 1.485541$, lo que corresponde a una probabilidad del $0.5976731$.
+- Ser del mismo género el odds de cooperación, ya que $\text{exp}(0.716355) = 2.046958$, lo que corresponde a una probabilidad del $0.6718039$.
+
+```{r}
+# anova
+anova(ergm_fit)
+```
+
+
+
+# Convergencia
+
+En algunas instancias, los algoritmos computacionales en `ergm` usan **cadenas de Markov de Monte Carlo** (*Markov chain Monte Carlo*, MCMC) para ajustar el modelo.
+
+## Ejemplo: Familias Florentinas (cont.)
+
+Se considera el término `degree(1)` para determinar si hay más o menos nodos de grado 1 de los que se esperarían de acuerdo con la densidad.
+
+```{r}
+# formulación del modelo
+ergm_model <- formula(flomarriage ~ edges + degree(1))
+summary(ergm_model)
+```
+
+
+```{r}
+# ajuste del modelo
+set.seed(42)
+ergm_fit <- ergm(formula = ergm_model)
+summary(ergm_fit)
+```
+
+
+```{r, fig.width=8, fig.height=8, fig.align='center'}
+# diagnosticos de convergencia
+mcmc.diagnostics(ergm_fit)
+```
+
+
+# Simulación
+
+
+Una vez que se han estimado los coeficientes de un ERGM, el modelo está **completamente especificado**. Define una distribución de probabilidad en todas las redes de este tamaño. 
+
+Si el modelo se ajusta bien a los datos observados, es más probable que las redes simuladas de esta distribución se "parezcan" a los datos observados.
+
+
+## Ejemplo: Familias Florentinas (cont.)
+
+
+```{r}
+# ajuste del modelo
+set.seed(42)
+ergm_model <- formula(flomarriage ~ edges + nodemain('wealth'))
+ergm_fit <- ergm(formula = ergm_model)
+```
+
+
+```{r}
+# simulacion
+sim <- simulate(object = ergm_fit, nsim = 10, seed = 42)
+# clase
+class(sim)
+# resumen de la simulacion
+summary(sim)
+# atributos de la simulacion
+attributes(sim)
+# valores simulados vs valores observados
+rbind("Valoes obs." = summary(ergm_fit),
+      "Media  sim." = colMeans(attr(sim, "stats")))
+```
+
+
+```{r, fig.width=12, fig.height=6, fig.align='center'}
+# grafico de una red simulada
+par(mfrow = c(1,2), mar = 0.2*c(1,1,1,1))
+set.seed(42)
+plot(sim[[1]], label = sim[[1]] %v% "vertex.names", vertex.cex = (sim[[1]] %v% "wealth")/25)
+set.seed(42)
+plot(sim[[2]], label = sim[[2]] %v% "vertex.names", vertex.cex = (sim[[2]] %v% "wealth")/25)
+```
+
+```{r}
+# bondad de ajuste del modelo
+# solo tres estadísticos de prueba
+ergm_gof <- gof(object = ergm_fit)
+ergm_gof
+```
+
+```{r, fig.align='center'}
+# graficos
+plot(ergm_gof)
+```
+
+
+# Referencias {-}
+
+https://rpubs.com/sbmrtnz/ina_day1
+
+https://yunranchen.github.io/intro-net-r/ergm-statnet-package.html
+
+```{r, eval = TRUE, echo=FALSE, out.width="25%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("KCbookcover1.jpg")
+```

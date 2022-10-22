@@ -1,0 +1,46 @@
+---
+title: "Taller 5"
+author: 
+- Juan Sosa PhD
+- Webpage https://sites.google.com/view/juansosa/ 
+- YouTube https://www.youtube.com/c/JuanSosa1702 
+- GitHub  https://github.com/jstats1702 
+- Rpubs   https://rpubs.com/jstats1702
+date: ""
+output:
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+1. Utilizado la guía de análisis dada en [relaciones entre palabras](https://rpubs.com/jstats1702/946584), comparar las cuentas de Tweeter de Petro y Uribe. Interpretar los resultados obtenidos (máximo 2000 palabras).
+
+    Nota: Para descargar el texto correspondiente puede utilizar cualquier guía de *Web Scraping*, por ejemplo [Scrape Tweets using twitteR package](https://rpubs.com/Kyleen1991/594933).
+
+2. Utilizado la guía de análisis dada en [relaciones entre palabras](https://rpubs.com/jstats1702/946584), analizar [Cien Años de Soledad](https://archive.org/stream/GarciaMarquezGabrielCienAnosDeSoledad1/garcia-marquez-gabriel-cien-anos-de-soledad1_djvu.txt) (o cualquier otro texto similar relevancia de su interés). Interpretar los resultados obtenidos (máximo 2000 palabras).
+
+3. Utilizado la guía de análisis dada en [relaciones entre palabras](https://rpubs.com/jstats1702/946584), analizar y comparar los discursos de posesión presidencial de:
+
+- Uribe (unificar los dos discursos).
+- Santos (unificar los dos discursos).
+- Duque.
+- Petro.
+
+    Interpretar los resultados obtenidos (máximo 2000 palabras).
+
+4. Utilizado la guía de análisis dada en [relaciones entre palabras](https://rpubs.com/jstats1702/946584), analizar y comparar los discursos de posesión presidencial de:
+
+- George W. Bush (unificar los dos discursos).
+- Barack Obama (unificar los dos discursos).
+- Donald Trump
+- Joe Biden
+
+    Interpretar los resultados obtenidos (máximo 2000 palabras).
+
+    Nota: George W. Bush y Donald Trump son republicanos, mientras que Barack Obama y Joe Biden son democratas.
+

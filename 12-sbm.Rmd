@@ -24,10 +24,8 @@ Se asume que **los vértices de una red pertenecen a clases** y que la propensi�
 
 Los enlaces se producen debido a la **equivalencia estructural** (*structural equivalence*), es decir, la similitud de los roles sociales.
 
-- **Homofilia**: Nodos similares se relacionan entre sí.
-- **Equivalencia:**: Nodos similares tienen relacionales similares.
 
-```{r, eval = TRUE, echo=FALSE, out.width="80%", fig.pos = 'H', fig.align = 'center'}
+```{r, eval = TRUE, echo=FALSE, out.width="95%", fig.pos = 'H', fig.align = 'center'}
 knitr::include_graphics("sbm_caracteristicas_estructurales.png")
 ```
 

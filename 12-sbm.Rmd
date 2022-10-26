@@ -24,6 +24,15 @@ Se asume que **los vértices de una red pertenecen a clases** y que la propensi�
 
 Los enlaces se producen debido a la **equivalencia estructural** (*structural equivalence*), es decir, la similitud de los roles sociales.
 
+- **Homofilia**: Nodos similares se relacionan entre sí.
+- **Equivalencia:**: Nodos similares tienen relacionales similares.
+
+```{r, eval = TRUE, echo=FALSE, out.width="80%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("sbm_caracteristicas_estructurales.png")
+```
+
+[***Sosa, J., & Buitrago, L. (2021). A review of latent space models for social networks. Revista Colombiana de Estadística, 44(1), 171-200.***](https://revistas.unal.edu.co/index.php/estad/article/view/89369/84715)
+
 El vértice $i\in V$ del grafo $G=(V,E)$ pertenece a **una sola clase (comunidad)** de una partición $\mathcal{P} = \{C_1,\ldots,C_Q\}$ de $V$  con $Q$ comunidades.
 
 El **modelo de bloques** se puede escribir como:

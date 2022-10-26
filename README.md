@@ -14,7 +14,8 @@ Materiales del curso de **Análisis Estadístico de Redes Sociales** ofreciendo 
 8. Relaciones entre palabras.
 9. Introducción a los modelos estadísticos para redes sociales.
 10. Modelo de grafos aleatorios generalizado.
-11. Modelos de grafos aleatorios exponenciales
+11. Modelos de grafos aleatorios exponenciales.
+12. Modelos de bloques estocásticos.
 
 ## Talleres
 

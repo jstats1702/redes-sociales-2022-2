@@ -1,0 +1,263 @@
+---
+title: "Modelos de bloques estocásticos"
+author: 
+- Juan Sosa PhD
+- Webpage https://sites.google.com/view/juansosa/ 
+- YouTube https://www.youtube.com/c/JuanSosa1702 
+- GitHub  https://github.com/jstats1702 
+- Rpubs   https://rpubs.com/jstats1702
+date: ""
+output:
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introducción
+
+Se asume que **los vértices de una red pertenecen a clases** y que la propensión a establecer vínculos entre pares de vértices depende de la pertenencia de clase de los dos vértices.
+
+Los enlaces se producen debido a la **equivalencia estructural** (*structural equivalence*), es decir, la similitud de los roles sociales.
+
+El vértice $i\in V$ del grafo $G=(V,E)$ pertenece a **una sola clase (comunidad)** de una partición $\mathcal{P} = \{C_1,\ldots,C_Q\}$ de $V$  con $Q$ comunidades.
+
+El **modelo de bloques** se puede escribir como:
+$$
+p(\mathbf{y}\mid\boldsymbol{\theta}) = \frac{1}{\kappa}\,\exp{\left\{ \sum_{q,r}\theta_{q,r}\, L_{q,r}(\mathbf{y}) \right\}}
+$$
+donde:
+
+- $\mathbf{y}=[y_{i,j}]$ es la realización de una matriz de adyacencia aleatoria $\mathbf{Y}=[Y_{i,j}]$ asociada con una **red binaria simple no dirigida**.
+- $L_{q,r}(\mathbf{y})$ es el **número de aristas** que conecta pares de vértices de las clases $q$ y $r$.
+- $q$ y $r$ indexan las **clases** y por lo tanto $q,r\in\{1,\ldots,Q\}$.
+- $\pi_{q,r}$ es la **probabilidad de interacción** de un vértice de la clase $q$ con un vértice de la clase $r$, i.e., $\pi_{q,r}=\textsf{Pr}(y_{i,j}=1\mid i\in C_q, j\in C_r)$. Para las redes no dirigidas se tiene que $\pi_{q,r}=\pi_{r,q}$.
+- $\boldsymbol{\theta}=(\theta_{1,1},\ldots,\theta_{Q,Q})$ es el **vector de parámetros** del modelo.
+- $\kappa\equiv\kappa(\boldsymbol{\theta})$ es la **constante de normalización**.
+
+# Modelo de bloques estocásticos
+
+En la práctica, **no se sabe** a qué clases pertenecen los vértices ni el número de clases.
+
+La **pertenencia a una clase** (*class membership*) de cada vértice $i$ se determina de forma independiente, de acuerdo con una distribución de probabilidad común sobre el conjunto $\{1,\ldots,Q\}$:
+$$
+z_{i,q} = 
+\begin{cases} 
+1 & \mbox{si el vértice $i$ pertence a la comunidad $q$} \\
+0 & \mbox{en otro caso}
+\end{cases}
+$$
+
+Así, 
+$$
+\boldsymbol{z}_i\mid \boldsymbol{\alpha}\stackrel{\text{iid}}{\sim} \textsf{Multinomial}(1,\boldsymbol{\alpha})
+\qquad\Longleftrightarrow\qquad
+\textsf{Pr}(z_{i,q}=1\mid\alpha_q) = \alpha_q
+$$
+donde $\boldsymbol{z}_i=(z_{i,1},\ldots,z_{i,Q})$, para $i = 1,\ldots,n$, y $\boldsymbol{\alpha}=(\alpha_1,\ldots,\alpha_Q)$ con $\sum_{q=1}^Q\alpha_q = 1$.
+
+Por lo tanto, dados los valores de $\boldsymbol{z}_1,\ldots,\boldsymbol{z}_n$ se tiene que las díadas se pueden modelar como condicionalmente independientes con distribución Bernoulli:
+$$
+y_{i,j}\mid\mathbf{\Pi},\boldsymbol{z}_i,\boldsymbol{z}_j \stackrel{\text{ind}}{\sim} \textsf{Bernoulli}\left( \pi_{\xi_i,\xi_j} \right)
+$$
+donde $\mathbf{\Pi}=[\pi_{q,r}]$ es una martiz de $Q\times Q$ que contiene las probabilidades de interacción, y $\xi_i=\xi(\boldsymbol{z}_i)$ denota la posición $q$ en $\boldsymbol{z}_i$ tal que $z_{i,q} = 1$ (i.e., $\xi_i=q$ significa que el vértice $i$ hace parte de la comunidad $q$).
+
+Se han propuesto en la literatura varios métodos que aproximan o modifican el método de **máxima verosimilitud**. El paquete `blockmodels` implementa uno de esos métodos llamado **algoritmo EM variacional**, el cual optimiza un límite inferior en la verosimilitud de los datos observados.
+
+# Ejemplo: Blogs de política
+
+Red de blogs políticos franceses clasificados por el proyecto *Observatoire Presidentielle* en cuanto a afiliación política. Un enlace indica que al menos uno de los dos blogs hacía referencia al otro en su página web.
+
+Fuente original: http://observatoire-presidentielle.fr/
+
+
+```{r, fig.height = 6, fig.width = 6, fig.align='center'}
+suppressMessages(suppressWarnings(library(igraph)))
+suppressMessages(suppressWarnings(library(sand)))
+# datos
+data(fblog)
+# color de vertices
+cols <- RColorBrewer::brewer.pal(n = 9, name = "Set1")
+party.nums <- as.numeric(as.factor(V(fblog)$PolParty))
+# grafico
+par(mfrow = c(1,1), mar = 0.2*c(1,1,1,1))
+set.seed(42)
+plot(fblog, layout = layout_with_fr, vertex.label = NA, vertex.size = 4, vertex.color = cols[party.nums], vertex.frame.color = cols[party.nums], edge.color = adjustcolor("black",0.1))
+```
+
+
+```{r}
+# orden
+vcount(fblog)
+# tamaño
+ecount(fblog)
+# dirigida?
+is_directed(fblog)
+```
+
+
+```{r}
+# paquete para ajustar SBMs
+suppressMessages(suppressWarnings(library(blockmodels)))
+# matriz de adyacencia
+A <- as.matrix(igraph::as_adjacency_matrix(fblog))
+dim(A)
+# formulación del modelo
+# membership_type -> "SBM_sym" para redes no dirigidas 
+# membership_type -> "SBM" para redes dirigidas
+set.seed(42)
+fblog.sbm <- blockmodels::BM_bernoulli(membership_type = "SBM_sym", adj = A, verbosity = 0, plotting = "")
+# estimación
+fblog.sbm$estimate()
+```
+
+La **verosimilitud de clasificación de integración** (ICL, *integration classification likelihood*) es un criterio similar en espíritu a varios criterios de información de los modelos estándar, como el criterio de información de Akaike (AIC) y el criterio de información Bayesiana (BIC), pero adaptado específicamente para problemas de agrupamiento.
+
+
+```{r, fig.width=6, fig.height=6}
+# ICL
+ICLs <- fblog.sbm$ICL
+ICLs
+# n. de grupos optimo
+Q <- which.max(ICLs)
+Q
+```
+
+
+```{r, fig.width=6, fig.height=6, fig.align='center'}
+# gráfico del ICL
+par(mfrow = c(1,1), mar = c(2.75,2.75,1.5,0.5), mgp = c(1.7,0.7,0))
+plot(fblog.sbm$ICL, xlab = "Q", ylab = "ICL", type = "b", pch = 16)
+lines(x = c(Q,Q), y = c(min(ICLs),max(ICLs)), col = "red", lty = 2)
+```
+
+
+Se pueden obtener las estimaciones de la **probabilidad de pertenencia a las comunidades**, es decir, las estimaciones de los valores esperados de los $\boldsymbol{z}_i$, dado $\mathbf{Y} = \mathbf{y}$.
+
+
+Estas estimaciones se pueden usar para determinar las **etiquetas de las asignaciones** a las comunidades (*cluster assignments* o *class memberships*). Esto se puede lograr por medio de la **probabilidad máximal** (superiores a 0.8586 en este caso).
+
+```{r}
+# probabilidades estimadas de pertenencia a las comunidades
+Z <- fblog.sbm$memberships[[Q]]$Z
+head(x = round(Z,3), n = 10)
+tail(x = round(Z,3), n = 10)
+# dimension
+dim(Z)
+# asignaciones
+labs <- apply(X = Z, MARGIN = 1, FUN = which.max)
+head(x = labs, n = 10)
+tail(x = labs, n = 10)
+length(labs)
+# resumen de las probabilidades maximales
+summary(Z[cbind(1:vcount(fblog), labs)])
+# tamaño de las comunidades
+table(labs)
+# probabilidades de los grupos
+alpha <- table(labs)/vcount(fblog)
+round(alpha, 3)
+# probabilidades de los grupos (ordenadas)
+round(alpha[order(alpha, decreasing = T)], 3)
+```
+
+
+**Probabilidades de interacción** (*intection probabilities*) $\mathbf{\Pi}=[\pi_{q,r}]$:
+
+```{r, fig.width=12, fig.height=6, fig.align='center'}
+# matriz de probabilidades de interaccion
+Pi <- fblog.sbm$model_parameters[[Q]]$pi
+round(Pi, 3)
+# grafico
+corrplot::corrplot(corr = Pi, type = "full", col.lim = c(0,1),  method = "shade", addgrid.col = "gray90", tl.col = "black")
+```
+
+*Grafo* y **Matriz de adyacencia**:
+
+```{r, fig.width=12, fig.height=6, fig.align='center'}
+# funciones
+# para ordenar la matriz de adyacencia respecto a una partición
+get_adjacency_ordered <- function(xi, A) 
+{
+  xi2 <- xi[order(xi)]
+  indices <- order(xi)
+  d <- NULL
+  for (i in 1:(length(xi)-1)) if (xi2[i] != xi2[i+1]) d <- c(d, i)
+  list(A = A[indices,indices], d = d)
+}
+# para graficar la matriz de adyacencia
+heat.plot0 <- function (mat, show.grid = FALSE, cex.axis, tick, labs, col.axis, ...)
+{ 
+        JJ <- dim(mat)[1]
+        colorscale <- c("white", rev(heat.colors(100)))
+        if(missing(labs))     labs <- 1:JJ
+        if(missing(col.axis)) col.axis <- rep("black", JJ)
+        if(missing(cex.axis)) cex.axis <- 1
+        if(missing(tick))     tick <- TRUE
+        ## adjacency matrix
+        image(seq(1, JJ), seq(1, JJ), mat, axes = FALSE, xlab = "", ylab = "", col = colorscale[seq(floor(100*min(mat)), floor(100*max(mat)))], ...)
+        for(j in 1:JJ){
+                axis(1, at = j, labels = labs[j], las = 2, cex.axis = cex.axis, tick, col.axis = col.axis[j], col.ticks = col.axis[j])
+                axis(2, at = j, labels = labs[j], las = 2, cex.axis = cex.axis, tick, col.axis = col.axis[j], col.ticks = col.axis[j])
+        }
+        box()
+        if(show.grid) grid(nx = JJ, ny = JJ)
+}
+# asignaciones de grupos
+xi <- apply(X = Z, MARGIN = 1, FUN = which.max)
+# matriz de adyacencia original
+Y <- A
+# matriz de adyacencia ordenada y lineas divisorias de acuerdo con las comunidades
+tmp <- get_adjacency_ordered(xi = xi, A = Y)
+# viz
+par(mfrow = c(1,2), mar = 0.2*c(1,1,1,1))
+# G
+cols <- RColorBrewer::brewer.pal(n = 12, name = "Paired")
+set.seed(42)
+plot(fblog, layout = layout_with_fr, vertex.label = NA, vertex.size = 5, vertex.color = cols[labs], vertex.frame.color = cols[labs], edge.color = adjustcolor("black",0.1))
+# A
+heat.plot0(mat = tmp$A, tick = F, labs = NA)
+abline(v = tmp$d+.5, h = tmp$d+.5)
+```
+
+
+
+**Comparación** con el agrupamiento natural:
+
+```{r}
+# agrupamiento natural
+party.nums <- as.numeric(as.factor(V(fblog)$PolParty))
+# agrupamiento estimado
+labs <- apply(X = Z, MARGIN = 1, FUN = which.max)
+# comparacion
+round(igraph::compare(comm1 = party.nums, comm2 = labs, method = "rand"), 4)
+round(igraph::compare(comm1 = party.nums, comm2 = labs, method = "adjusted.rand"), 4)
+round(igraph::compare(comm1 = party.nums, comm2 = labs, method = "nmi"), 4)
+table(party.nums, labs)
+```
+
+
+Para realizar la **bondad de ajuste** del modelo se pueden usar estadísticos de prueba por medio de métodos de simulación.
+
+```{r, fig.align='center'}
+# simulación
+alpha <- table(labs)/vcount(fblog)
+Pi <- fblog.sbm$model_parameters[[Q]]$pi
+Pi <- 0.5*(t(Pi) + Pi) # asegurarse que Pi sea simétrica
+bs <- stats::rmultinom(n = 1, size = vcount(fblog), prob = alpha)
+set.seed(42)
+g <- igraph::sample_sbm(n = vcount(fblog), pref.matrix = Pi, block.sizes = bs, directed = F)
+# gráfico
+par(mfrow = c(1,1), mar = 0.2*c(1,1,1,1))
+set.seed(42)
+plot(g, layout = layout_with_fr, vertex.label = NA, vertex.size = 5, vertex.color = 1, vertex.frame.color = 1, edge.color = adjustcolor("black",0.1))
+```
+
+# Referencias {-}
+
+```{r, eval = TRUE, echo=FALSE, out.width="25%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("KCbookcover1.jpg")
+```

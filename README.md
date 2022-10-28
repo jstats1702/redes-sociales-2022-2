@@ -16,6 +16,7 @@ Materiales del curso de **Análisis Estadístico de Redes Sociales** ofreciendo 
 10. Modelo de grafos aleatorios generalizado.
 11. Modelos de grafos aleatorios exponenciales.
 12. Modelos de bloques estocásticos.
+13. Modelos de espacio latente: Modelos de distancia.
 
 ## Talleres
 

@@ -1,0 +1,520 @@
+---
+title: "Modelos de espacio latente: Modelos de distancia"
+author: 
+- Juan Sosa PhD
+- Webpage https://sites.google.com/view/juansosa/ 
+- YouTube https://www.youtube.com/c/JuanSosa1702 
+- GitHub  https://github.com/jstats1702 
+- Rpubs   https://rpubs.com/jstats1702
+date: ""
+output:
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: cosmo
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introducción
+
+
+Una innovación clave en el modelamiento de datos relacionales es la incorporación de **variables latentes** en la forma de **características no observadas** de los vértices. Es decir, el uso de **variables que no se observan** directamente pero que son importantes para determinar las **probabilidades de interacción**.
+
+
+Bajo este enfoque se tiene que las entradas de la matriz de adyacencia $\mathbf{Y} = [y_{i,j}]$ asociada con un grafo $G=(V,E)$ son condicionalmente independientes con distribución Bernoulli:
+$$
+y_{i,j}\mid\mu,\boldsymbol{\beta},\mathbf{x}_{i,j},\boldsymbol{u}_i,\boldsymbol{u}_j \stackrel{\text{ind}}{\sim} \textsf{Bernoulli}\left( g\left( \mu + \boldsymbol{\beta}^{\textsf{T}}\mathbf{x}_{i,j} + \alpha(\boldsymbol{u}_i,\boldsymbol{u}_j) \right) \right)
+$$
+donde:
+
+- $g(\cdot)$ es una función de enlace. Por ejemplo, la función logit inversa, $\textsf{expit}(x)$, o la función de distribución de una Normal estándar, $\Phi(x)$.
+- $\mu$ es el intercepto. 
+- $\boldsymbol{\beta}=(\beta_1,\ldots,\beta_p)$ es un vector de coeficientes asociados con las covariables (variables exógenas) $\mathbf{x}_{i,j}$.
+- $\mathbf{x}_{i,j}=(x_{i,j,1},\ldots,x_{i,j,p})$ es un vector de covariables que se construyen a partir de las variables nodales.
+- $\boldsymbol{u}_i=(u_{i,1},\ldots,u_{i,k})$ es un vector de variables latentes definidas en un espacio Euclidiano $k$-dimensional denominado **Espacio Social**.
+- $\alpha(\cdot,\cdot)$ es una función simétrica:
+
+    i.   **Modelo de distancia**: $\,\,$                 $\alpha(\boldsymbol{u}_i,\boldsymbol{u}_j) = - \| \boldsymbol{u}_i - \boldsymbol{u}_j \|$ .
+    ii.  **Modelo bilineal**: $\,\,\,\,\,\,\,\,\,\,\,\,$ $\alpha(\boldsymbol{u}_i,\boldsymbol{u}_j) = \boldsymbol{u}_i^{\textsf{T}} \boldsymbol{u}_j$ .
+    iii. **Modelo factorial**: $\,\,\,\,\,\,\,\,\,\,$    $\alpha(\boldsymbol{u}_i,\boldsymbol{u}_j) = \boldsymbol{u}_i^{\textsf{T}} \mathbf{\Lambda} \boldsymbol{u}_j$ donde $\mathbf{\Lambda} = \textsf{diag}(\lambda_1,\ldots,\lambda_k)$ es una mariz diagonal de $k\times k$.
+
+Se debe especificar:
+
+- La dimensión latente $k$.
+- La distribución de las variables latentes.
+- La forma funcional de $\alpha(\cdot,\cdot)$.
+- La función de enlace.
+
+Por construcción, los modelos latentes tienen una especificación jerárquica, por lo que un **enfoque Bayesiano de inferencia** es natural.
+
+Se acostumbra usar **métodos de cadenas de Markov de Monte Carlo** (*Markov chain Monte Carlo*, MCMC) o **métodos Variacionales** para explorar la **distribución posterior** de los parámetros del modelo. 
+
+
+# Modelo de distancia clásico
+
+***Hoff, P. D., Raftery, A. E., & Handcock, M. S. (2002). Latent space approaches to social network analysis. Journal of the american Statistical association, 97(460), 1090-1098.***
+
+[***Sosa, J., & Buitrago, L. (2021). A review of latent space models for social networks. Revista Colombiana de Estadística, 44(1), 171-200.***](https://revistas.unal.edu.co/index.php/estad/article/view/89369/84715)
+
+$$
+y_{i,j}\mid\mu,\boldsymbol{u}_i,\boldsymbol{u}_j \stackrel{\text{ind}}{\sim} \textsf{Bernoulli}\left( g\left( \mu - \| \boldsymbol{u}_i - \boldsymbol{u}_j \| \right) \right)
+$$
+donde:
+
+- $\textsf{expit}(x) = \textsf{logit}^{-1}(x)=1/(1+\exp(-x))=\exp(x)/(1+\exp(x))$.
+- $\mu\mid\xi,\psi^2\sim\textsf{N}(\xi,\psi^2)$.
+- $\boldsymbol{u}_i\mid \boldsymbol{\mu},\sigma^2\stackrel{\text{iid}}{\sim}\textsf{N}_k(\boldsymbol{\mu},\sigma^2\mathbf{I})$.
+
+
+```{r, eval = TRUE, echo=FALSE, out.width="95%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("dist.png")
+```
+
+
+## Datos: Familias Florentinas
+
+Lazos matrimoniales y comerciales entre familias florentinas del Renacimiento.
+
+***Padgett, John F. 1994. Marriage and Elite Structure in Renaissance Florence, 1282-1500. Paper delivered to the Social Science History Association.***
+
+
+
+```{r, fig.width=6, fig.height=6,fig.align='center'}
+# librerias
+suppressMessages(suppressWarnings(library(igraph)))
+suppressMessages(suppressWarnings(library(latentnet)))
+# datos
+data(florentine, package = "ergm")
+flomarriage
+class(flomarriage)
+# matriz de adyacencia
+# remover vértice 12 porque es aislado (distancia Inf)
+A <- network::as.matrix.network.adjacency(x = flomarriage)
+index_rm <- which(colSums(A) == 0)
+index_rm
+A <- A[-index_rm,-index_rm]
+class(A)
+# variable exogena: riqueza
+wealth <- flomarriage %v% "wealth"
+wealth <- wealth[-index_rm]
+wealth
+# tipo igraph
+g <- igraph::graph_from_adjacency_matrix(adjmatrix = A, mode = "undirected")
+class(g)
+# tipo network 
+flomarriage <- network::as.network.matrix(A)
+class(flomarriage)
+# grafico
+set.seed(42)
+plot(g, vertex.size = 1.2*sqrt(wealth), vertex.label = NA, main = "Familias Florentinas")
+```
+
+## Ajuste del modelo de distancia clásico 
+
+```{r, echo=T, eval=F}
+# ajuste del modelo
+# d = 2 : dimensión latente bidimensional
+# G = 0 : sin factores de agrupamiento
+fit <- ergmm(formula = flomarriage ~ euclidean(d = 2, G = 0), seed = 42)
+```
+
+
+```{r, echo=F, eval=T}
+load(file = "fit_flomarriage_distance.RData")
+```
+
+
+```{r}
+# resumen del ajuste
+summary(fit)
+```
+
+## Convergencia
+
+```{r, fig.width=8, fig.height=6, fig.align='center'}
+# cadena verosimilitud
+x <- c(fit$sample$lpY)
+par(mfrow = c(1,1), mar = c(3,3,1.4,1.4), mgp = c(1.75,0.75,0))
+plot(x = 1:length(x), y = x, type = "l", col = "darkgray", xlab = "Iteración", ylab = "Log-verosimilitud", main = "")
+abline(h = mean(x), col = 4, lty = 2, lwd = 2)
+abline(h = quantile(x, c(0.025,0.975)), col = 2, lty = 3, lwd = 2)
+```
+
+## Inferencia sobre el intercepto
+
+```{r, fig.width=10, fig.height=5,fig.align='center'}
+# cadena e histograma beta
+par(mfrow = c(1,2), mar = c(3,3,1.4,1.4), mgp = c(1.75,0.75,0))
+x <- c(fit$sample$beta)
+# cadena
+plot(x = 1:length(x), y = x, type = "l", col = "darkgray", xlab = "Iteración", ylab = expression(beta), main = "Cadena")
+abline(h = mean(x), col = 4, lty = 2, lwd = 2)
+abline(h = quantile(x, c(0.025,0.975)), col = 2, lty = 3, lwd = 2)
+# histograma
+hist(x = x, freq = F, col = "gray90", border = "gray90", xlab = expression(beta), ylab = "Densidad", main = "Distr. marginal")
+abline(v = mean(x), col = 4, lty = 2, lwd = 2)
+abline(v = quantile(x, c(0.025,0.975)), col = 2, lty = 3, lwd = 2)
+```
+
+```{r}
+# media posterior del intercepto
+beta_pm <- mean(fit$sample$beta)
+beta_pm
+# probabilidad de interacción basal
+1/(1 + exp(-beta_pm))
+```
+
+## Inferencia sobre las posiciones latentes
+
+```{r, fig.width=6, fig.height=6, fig.align='center'}
+# muestras posiciones latentes
+# transformación de procrustes
+B  <- dim(fit$sample$Z)[1]  # no. de muestras MCMC
+n  <- dim(fit$sample$Z)[2]  # no. vértices
+d  <- dim(fit$sample$Z)[3]  # dimensión latente
+U0 <- scale(fit$mcmc.mle$Z, T, T)
+U.array <- array(data = NA, dim = c(B,n,d))
+for (b in 1:B)
+  U.array[b,,] <- MCMCpack::procrustes(X = scale(fit$sample$Z[b,,], T, T), Xstar = U0, translation = T, dilation = T)$X.new
+U.pm <- apply(X = U.array, MARGIN = c(2, 3), FUN = mean) 
+# colores
+rr <- atan2(U0[,2], U0[,1])
+rr <- rr+abs(min(rr))
+rr <- rr/max(rr)
+gg <- 1 - rr
+bb <- U0[,2]^2 + U0[,1]^2
+bb <- bb/max(bb)
+aa <- 0.4
+# gráfico adelgazando la cadena cada 8 observaciones
+nthin <- 8
+index_thin <- seq(from = nthin, to = B, by = nthin)
+plot(NA, NA, cex.axis = 0.7, xlab = "Dimensión 1", ylab = "Dimensión 2", type = "n", xlim = range(U.array), ylim = range(U.array), main = "Posiciones latentes")
+for (i in 1:n) points(U.array[index_thin,i,1], U.array[index_thin,i,2], pch = 15, cex = 0.3, col = rgb(rr[i], gg[i], bb[i], aa))
+for (i in 1:n) text(x = U.pm[i,1], y = U.pm[i,2], labels = i, col = 1, cex = 1.1, font = 2)
+```
+
+```{r, fig.width=6, fig.height=6, fig.align='center'}
+# posiciones latentes
+set.seed(42)
+plot(fit, what = "pmean", print.formula = F, main = "Media post. posiciones latentes")
+```
+
+## Inferencia probabilidades de interacción
+
+```{r, fig.width=10, fig.height=5, fig.align='center'}
+# función expit
+expit <- function(x) 1/(1+exp(-x))
+# probabilidades de interacción (media posterior)
+Pi <- matrix(0, n, n)
+for (b in 1:B) {
+  bet <- fit$sample$beta[b]
+  for (i in 1:(n-1)) {
+    for (j in (i+1):n) {
+      lat <- sqrt(sum((fit$sample$Z[b,i,] - fit$sample$Z[b,j,])^2))
+      Pi[i,j] <- Pi[j,i] <- Pi[i,j] + expit(bet - lat)/B
+    }
+  }
+}
+# gráfico
+rownames(A) <- colnames(A) <- 1:n
+par(mfrow = c(1,2))
+corrplot::corrplot(corr = A,  type = "full", col.lim = c(0,1), method = "shade", addgrid.col = "gray90", tl.col = "black")
+corrplot::corrplot(corr = Pi, type = "full", col.lim = c(0,1), method = "shade", addgrid.col = "gray90", tl.col = "black")
+```
+
+## Bondad de ajuste
+
+
+```{r, echo=TRUE, eval=F}
+# bondad de ajuste
+B <- dim(fit$sample$Z)[1]
+n <- dim(fit$sample$Z)[2]
+d <- dim(fit$sample$Z)[3]
+stat <- matrix(NA, B, 6)
+set.seed(42)
+for (b in 1:B) {
+  # intercepto
+  bet <- fit$sample$beta[b]
+  # simular datos
+  Ar  <- matrix(0, n, n)
+  for (i in 1:(n-1)) {
+    for (j in (i+1):n){
+      lat <- sqrt(sum((fit$sample$Z[b,i,] - fit$sample$Z[b,j,])^2))
+      Ar[i,j] <- Ar[j,i] <- rbinom(n = 1, size = 1, prob = expit(bet - lat))
+    }
+  }
+  gr <- igraph::graph_from_adjacency_matrix(adjmatrix = Ar, mode = "undirected")
+  # calcular estadísticos
+  stat[b,1] <- igraph::edge_density(graph = gr, loops = F)
+  stat[b,2] <- igraph::transitivity(graph = gr, type = "global")
+  stat[b,3] <- igraph::assortativity_degree(graph = gr, directed = F)
+  stat[b,4] <- igraph::mean_distance(graph = gr, directed = F)
+  stat[b,5] <- mean(igraph::degree(graph = gr))
+  stat[b,6] <- sd(igraph::degree(graph = gr))
+}
+# valores observados
+dens_obs <- igraph::edge_density(graph = g, loops = F)
+tran_obs <- igraph::transitivity(graph = g, type = "global")
+asso_obs <- igraph::assortativity_degree(graph = g, directed = F)
+mdis_obs <- igraph::mean_distance(graph = g, directed = F)
+mdeg_obs <- mean(igraph::degree(graph = g))
+sdeg_obs <- sd(igraph::degree(graph = g))
+# gráficos
+par(mfrow = c(2,3))
+hist(x = stat[,1], freq = F, col = "gray90", border = "gray90", xlim = range(stat[,1]), xlab = "Densidad", ylab = "Densidad", main = "Densidad")
+abline(v = dens_obs, col = 4, lty = 2)
+abline(v = quantile(stat[,1], c(0.025, 0.975)), lty = 3, col = 2)
+hist(x = stat[,2], freq = F, col = "gray90", border = "gray90", xlim = range(stat[,2]), xlab = "Transitividad", ylab = "Densidad", main = "Transitividad")
+abline(v = tran_obs, col = 4, lty = 2)
+abline(v = quantile(stat[,2], c(0.025, 0.975)), lty = 3, col = 2)
+hist(x = stat[,3], freq = F, col = "gray90", border = "gray90", xlim = range(stat[,3]), xlab = "Asortatividad", ylab = "Densidad", main = "Asortatividad")
+abline(v = asso_obs, col = 4, lty = 2)
+abline(v = quantile(stat[,3], c(0.025, 0.975)), lty = 3, col = 2)
+hist(x = stat[,4], freq = F, col = "gray90", border = "gray90", xlim = range(stat[,4]), xlab = "Distancia prom.", ylab = "Densidad", main = "Distancia prom.")
+abline(v = mdis_obs, col = 4, lty = 2)
+abline(v = quantile(stat[,4], c(0.025, 0.975)), lty = 3, col = 2)
+hist(x = stat[,5], freq = F, col = "gray90", border = "gray90", xlim = range(stat[,5]), xlab = "Grado prom.", ylab = "Densidad", main = "Grado prom.")
+abline(v = mdeg_obs, col = 4, lty = 2)
+abline(v = quantile(stat[,5], c(0.025, 0.975)), lty = 3, col = 2)
+hist(x = stat[,6], freq = F, col = "gray90", border = "gray90", xlim = range(stat[,6]), xlab = "Grado DE", ylab = "Densidad", main = "Grado DE")
+abline(v = sdeg_obs, col = 4, lty = 2)
+abline(v = quantile(stat[,6], c(0.025, 0.975)), lty = 3, col = 2)
+```
+
+
+```{r, fig.width=12, fig.height=8, echo=F, eval=T}
+# bondad de ajuste
+B <- dim(fit$sample$Z)[1]
+n <- dim(fit$sample$Z)[2]
+d <- dim(fit$sample$Z)[3]
+load(file = "stat_flomarriage_distance.RData")
+# valores observados
+dens_obs <- igraph::edge_density(graph = g, loops = F)
+tran_obs <- igraph::transitivity(graph = g, type = "global")
+asso_obs <- igraph::assortativity_degree(graph = g, directed = F)
+mdis_obs <- igraph::mean_distance(graph = g, directed = F)
+mdeg_obs <- mean(igraph::degree(graph = g))
+sdeg_obs <- sd(igraph::degree(graph = g))
+# graficos
+par(mfrow = c(2,3))
+hist(x = stat[,1], freq = F, col = "gray90", border = "gray90", xlim = range(stat[,1]), xlab = "Densidad", ylab = "Densidad", main = "Densidad")
+abline(v = dens_obs, col = 4, lty = 2)
+abline(v = quantile(stat[,1], c(0.025, 0.975)), lty = 3, col = 2)
+hist(x = stat[,2], freq = F, col = "gray90", border = "gray90", xlim = range(stat[,2]), xlab = "Transitividad", ylab = "Densidad", main = "Transitividad")
+abline(v = tran_obs, col = 4, lty = 2)
+abline(v = quantile(stat[,2], c(0.025, 0.975)), lty = 3, col = 2)
+hist(x = stat[,3], freq = F, col = "gray90", border = "gray90", xlim = range(stat[,3]), xlab = "Asortatividad", ylab = "Densidad", main = "Asortatividad")
+abline(v = asso_obs, col = 4, lty = 2)
+abline(v = quantile(stat[,3], c(0.025, 0.975)), lty = 3, col = 2)
+hist(x = stat[,4], freq = F, col = "gray90", border = "gray90", xlim = range(stat[,4]), xlab = "Distancia prom.", ylab = "Densidad", main = "Distancia prom.")
+abline(v = mdis_obs, col = 4, lty = 2)
+abline(v = quantile(stat[,4], c(0.025, 0.975)), lty = 3, col = 2)
+hist(x = stat[,5], freq = F, col = "gray90", border = "gray90", xlim = range(stat[,5]), xlab = "Grado prom.", ylab = "Densidad", main = "Grado prom.")
+abline(v = mdeg_obs, col = 4, lty = 2)
+abline(v = quantile(stat[,5], c(0.025, 0.975)), lty = 3, col = 2)
+hist(x = stat[,6], freq = F, col = "gray90", border = "gray90", xlim = range(stat[,6]), xlab = "Grado DE", ylab = "Densidad", main = "Grado DE")
+abline(v = sdeg_obs, col = 4, lty = 2)
+abline(v = quantile(stat[,6], c(0.025, 0.975)), lty = 3, col = 2)
+```
+
+```{r}
+# valores p
+round(mean(stat[,1] > dens_obs), 4)
+round(mean(stat[,2] > tran_obs), 4)
+round(mean(stat[,3] > asso_obs), 4)
+round(mean(stat[,4] > mdis_obs), 4)
+round(mean(stat[,5] > mdeg_obs), 4)
+round(mean(stat[,6] > sdeg_obs), 4)
+```
+
+# Modelo de distancia clásico con covariables
+
+***Hoff, P. D., Raftery, A. E., & Handcock, M. S. (2002). Latent space approaches to social network analysis. Journal of the american Statistical association, 97(460), 1090-1098.***
+
+$$
+y_{i,j}\mid\mu, \boldsymbol{\beta}, \mathbf{x}_{i,j}, \boldsymbol{u}_i,\boldsymbol{u}_j \stackrel{\text{ind}}{\sim} \textsf{Bernoulli}\left( \textsf{expit}\left( \mu + \boldsymbol{\beta}^{\textsf{T}}\mathbf{x}_{i,j} - \| \boldsymbol{u}_i - \boldsymbol{u}_j \| \right) \right)
+$$
+donde:
+
+- $\textsf{expit}(x) = \textsf{logit}^{-1}(x)=1/(1+\exp(-x))=\exp(x)/(1+\exp(x))$.
+- $\mu\mid \xi,\psi^2 \sim\textsf{N}(\xi,\psi^2)$.
+- $\beta_\ell\mid \xi_\ell,\psi_\ell^2 \sim\textsf{N}(\xi_\ell,\psi_\ell^2)$, para $\ell = 1,\ldots,p$.
+- $\boldsymbol{u}_i\mid \boldsymbol{\mu},\sigma^2\stackrel{\text{iid}}{\sim}\textsf{N}_k(\boldsymbol{\mu},\sigma^2\mathbf{I})$.
+
+## Datos: Familias Florentinas (cont.)
+
+```{r, fig.width=6, fig.height=6}
+# librerias
+suppressMessages(suppressWarnings(library(igraph)))
+suppressMessages(suppressWarnings(library(latentnet)))
+# datos
+data(florentine, package = "ergm")
+flomarriage
+# clase
+class(flomarriage)
+# matriz de adyacencia
+# remover vertice 12 porque es ailado (distancia Inf)
+A <- network::as.matrix.network.adjacency(x = flomarriage)
+index_rm <- which(colSums(A) == 0)
+index_rm
+A <- A[-index_rm,-index_rm]
+class(A)
+# variable exogena: riqueza
+wealth <- flomarriage %v% "wealth"
+wealth <- wealth[-index_rm]
+wealth
+# tipo igraph
+g <- igraph::graph_from_adjacency_matrix(adjmatrix = A, mode = "undirected")
+class(g)
+# tipo network 
+flomarriage <- network::as.network.matrix(A)
+class(flomarriage)
+```
+
+## Ajuste del modelo
+
+```{r, eval=F, echo=T}
+# covariables
+x <- abs(outer(X = wealth, Y = wealth, FUN = "-"))
+# ajuste del modelo
+fit <- ergmm(formula = flomarriage ~ euclidean(d = 2, G = 0) + edgecov(x), seed = 42)
+```
+
+```{r, echo=F, eval=T}
+load(file = "fit_flomarriage_distance_covs.RData")
+```
+
+```{r}
+# resumen del ajuste
+summary(fit)
+```
+
+## Inferencia sobre los coeficientes
+
+```{r, fig.width=10, fig.height=5, fig.align='center'}
+# cadena e histograma beta
+par(mfrow = c(1,2), mar = c(3,3,1.4,1.4), mgp = c(1.75,.75,0))
+x <- c(fit$sample$beta[,2])
+# cadena
+plot(x = 1:length(x), y = x, type = "l", xlab = "Iteración", ylab = expression(beta), col = "darkgray", main = "Cadena")
+abline(h = mean(x), col = 4, lty = 2, lwd = 2)
+abline(h = quantile(x, c(0.025,0.975)), col = 2, lty = 3, lwd = 2)
+# histograma
+hist(x = x, freq = F, col = "gray90", border = "gray90", xlab = expression(beta), ylab = "Densidad", main = "Distr. marginal")
+abline(v = mean(x), col = 4, lty = 2, lwd = 2)
+abline(v = quantile(x, c(0.025,0.975)), col = 2, lty = 3, lwd = 2)
+```
+
+
+```{r}
+# media posterior del intercepto
+beta_pm <- mean(fit$sample$beta[,2])
+beta_pm
+```
+
+# Modelo de distancia con agrupaciones
+
+***Krivitsky, P. N., Handcock, M. S., Raftery, A. E., & Hoff, P. D. (2009). Representing degree distributions, clustering, and homophily in social networks with latent cluster random effects models. Social networks, 31(3), 204-213.***
+
+$$
+y_{i,j}\mid\mu,\boldsymbol{u}_i,\boldsymbol{u}_j \stackrel{\text{ind}}{\sim} \textsf{Bernoulli}\left( \textsf{expit}\left( \mu - \| \boldsymbol{u}_i - \boldsymbol{u}_j \| \right) \right)
+$$
+donde:
+
+- $\textsf{expit}(x) = \textsf{logit}^{-1}(x)=1/(1+\exp(-x))=\exp(x)/(1+\exp(x))$.
+- $\mu\mid\xi,\psi^2 \sim\textsf{N}(\xi,\psi^2)$.
+- $\boldsymbol{u}_i \mid \{\lambda_g\}, \{\boldsymbol{\mu}_g\}, \{\sigma_g^2\} \stackrel{\text{iid}}{\sim} \sum_{g=1}^G \lambda_g\, \textsf{N}_k(\boldsymbol{\mu}_g,\sigma_g^2\mathbf{I})$.
+
+## Datos: Sampson 
+
+Sampson (1969) registró las interacciones sociales entre un grupo de monjes mientras él residía en el claustro. Resultaron de particular interés los datos sobre relaciones de afecto positivo.
+
+Cada monje clasificó sus tres opciones principales (o cuatro, en el caso de empates) en "agrado", de forma que existe una arista dirigida del monje A al monje B si A nombró a B entre sus opciones principales.
+
+***Sampson, S. F. (1968). A novitiate in a period of change: An experimental and case study of relationships, Unpublished Ph.D. dissertation, Department of Sociology, Cornell University.***
+
+```{r}
+# datos
+data(sampson)
+samplike
+class(samplike)
+# matriz de adyacencia
+# no hay vértices conectados
+A <- network::as.matrix.network.adjacency(x = samplike)
+class(A)
+# tipo igraph
+g <- igraph::graph_from_adjacency_matrix(adjmatrix = A, mode = "directed")
+class(g)
+# gráfico
+set.seed(42)
+plot(g, vertex.size = 10, vertex.label = NA, edge.arrow.size = 0.5, main = "Monjes")
+```
+
+## Ajuste del modelo
+
+```{r, eval=F, echo=T}
+# ajuste del modelo para varios valores de G
+fit1 <- ergmm(samplike ~ euclidean(d = 2, G = 1))
+fit2 <- ergmm(samplike ~ euclidean(d = 2, G = 2))
+fit3 <- ergmm(samplike ~ euclidean(d = 2, G = 3))
+fit4 <- ergmm(samplike ~ euclidean(d = 2, G = 4))
+```
+
+```{r, eval=T, echo=F}
+load(file = "fit_sampson_distance_groups.RData")
+```
+
+## Selección del modelo
+
+```{r, fig.width=6, fig.height=6, fig.align='center'}
+# modelos
+fits <- list(fit1, fit2, fit3, fit4)
+
+# calcular BICs
+bics <- reshape(as.data.frame(t(sapply(fits, function(x) c(G = x$model$G, unlist(bic.ergmm(x))[c("Y","Z","overall")])))),
+                list(c("Y","Z","overall")),
+                idvar = "G",
+                v.names = "BIC",
+                timevar = "Component",
+                times = c("likelihood","clustering","overall"),
+                direction = "long")
+bics
+# grafico de BIC vs no.de clusters
+with(bics, interaction.plot(G, Component, BIC, type = "b", xlab = "Clusters", ylab = "BIC"))
+# G optimo
+bestG <- with(bics[bics$Component == "overall",], G[which.min(BIC)])
+bestG
+# resumen del modelo para G = 3
+summary(fit3)
+```
+
+## Inferencia sobre las posiciones latentes
+
+```{r, fig.width=6, fig.height=6, fig.align='center'}
+# grafico densidad variables latentes
+plot(fit3, what = "density")
+```
+
+```{r, fig.width=6, fig.height=6, fig.align='center'}
+# grafico posiciones latentes
+plot(fit3, what = "pmean", print.formula = F, main = "Media post. posiciones latentes")
+```
+
+```{r, fig.width=6, fig.height=6, fig.align='center'}
+# grafico posiciones latentes
+plot(fit3, pie = TRUE, vertex.cex = 3, print.formula = F, main = "Media post. posiciones latentes")
+```
+
+```{r}
+# asignacion de los clusters
+fit3$mcmc.mle$Z.K
+```
+
+# Referencias {-}
+
+```{r, eval = TRUE, echo=FALSE, out.width="25%", fig.pos = 'H', fig.align = 'center'}
+knitr::include_graphics("KCbookcover1.jpg")
+```

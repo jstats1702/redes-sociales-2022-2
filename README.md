@@ -41,6 +41,11 @@ Materiales del curso de **Análisis Estadístico de Redes Sociales** ofreciendo 
 - stop_words_spanish.txt
 - discurso_posesion_petro.txt
 - discurso_posesion_duque.txt
+- nodes.csv
+- work-edges.csv
+- alliance-edges.csv
+- CSS2022.txt
+- covs2022.txt
 
 
 

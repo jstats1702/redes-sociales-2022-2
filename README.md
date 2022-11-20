@@ -17,6 +17,7 @@ Materiales del curso de **Análisis Estadístico de Redes Sociales** ofreciendo 
 11. Modelos de grafos aleatorios exponenciales.
 12. Modelos de bloques estocásticos.
 13. Modelos de espacio latente: Modelos de distancia.
+14. Exposición 1: Inferencia sobre topología de la red
 
 ## Talleres
 

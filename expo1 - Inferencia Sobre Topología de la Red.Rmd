@@ -1,0 +1,779 @@
+---
+title: "Inferencia Sobre Topología de la Red"
+author:
+ - Cristian camilo Parra Aldana 
+ - Miller Zaith Moreno Avellaneda 
+ - Laura Camila Cruz De Paula
+date: "2022-11-16"
+output: 
+  html_document:
+    toc: true
+    number_sections: true
+bibliography: references.bib
+---
+
+
+<style>
+p.comment {
+background-color: #E5E4E2;
+padding: 10px;
+border: 1px solid black;
+margin-left: 25px;
+border-radius: 5px;
+font-style: italic;
+}
+</style>
+
+# Motivación
+
+En muchos casos la existencia o no de un enlace entre dos nodos en un grafo tiene poca o ninguna incertidumbre para decidir sobre la misma, en estos casos se busca una manera natural de predecir un enlace usando la información observada acerca de la red, de manera tal que se puede plantear la inferencia de los enlaces en tres casos:
+
+1.  Predicción de enlaces dados los vértices y el conocimiento de algunas aristas.
+
+2.  Predicción de enlaces dados los vértices y sus características nodales.
+
+3.  Predicción de enlaces dados algunos vertices y sus características nodales.
+
+<center>![Tipos de Inferencia Sobre Topología de la Red](tipos_inferencia.png){width="1500"}</center>
+
+De manera visual se puede identificar los tres tipos de problemas de inferencia de topología de red, para un grafo $\mathbf{G}$ de juguete. Las aristas existentes se muestran en lineas solidas; las no aristas, en lineas punteadas. Los vértices y aristas observados se muestran en obscuro (es decir, rojo y azul, respectivamente); vértices y aristas no observados, en claro (es decir, rosa y azul claro).
+
+-   **Grafo superior izquierdo:** El verdadero grafo subyacente.
+
+-   **Grafo Superior Derecho:** Predicción de enlaces. (Caso 1)
+
+-   **Grafo inferior izquierdo:** Inferencia redes de asociación. (Caso 2)
+
+-   **Grafo inferior Derecho:** Inferencia de redes tomográficas (Caso 3)
+
+# Topología de la Red
+
+Sea $\mathbf{Y}=\left[y_{ij}\right]$ la matriz de adyacencia asociada al grafo $\mathbf{G}=(\mathbf{V},\mathbf{E})$ de tamaño $N_v\times N_v$ con $N_v=\mid\mathbf{V}\mid$ y $\mathbf{X}=\left(x_1,x_2,\dots,x_{N_v}\right)^T$ el conjunto de características nodales.
+
+Supongase que de las entradas de la matríz $\mathbf{Y}$ sólo son observadas algunas de ellas denotadas por $\mathbf{Y^{obs}}$ y se desconocen las restantes denotadas por $\mathbf{Y^{miss}}$.
+
+El problema principal rádica en predecir las entradas $\mathbf{Y^{miss}}$ no observadas de $\mathbf{Y}$ dados $\mathbf{Y^{obs}=y^{obs}}$ y posiblemente algunos atributos nodales $\mathbf{X}=\mathbf{x}=\left(x_1,x_2,\dots,x_{N_v}\right)^T$
+
+Cómo supuesto para la información faltante acerca de la existencia o no de los enlaces es que son por *perdida al azar,* lo que implica que está información faltante se puede predecir con la información obersvada que está completa, para la cual se proponen dos alternativas:
+
+-   *Modelos:* Ya discutidos en clases anteriores.
+
+-   *Puntajes:* Scores cómo alternativa robusta basadas en umbrales o rankings.
+
+# Puntajes
+
+Sean $i, j$ pares de vértices con enlace existente o no, desconocido y sea $s(i,j)$ un puntaje que rankea a las diadas cómo medida de potenciales enlaces o no.
+
+## Tipos de Puntaje
+
+-   Negativo de distancia geodésica:
+
+<p class="comment">
+$$
+s(i,j)=-\texttt{dist}_G^{obs}(i,j)
+$$
+</p>
+
+-   Comparación de las vecindades $\mathcal{N}_i$ y $\mathcal{N}_j$ de $i$ y $j$:
+
+<p class="comment">
+$$
+    s(i,j)=\mid\mathcal{N}_i^{obs} \cap \mathcal{N}_j^{obs}\mid
+$$
+</p>
+
+-   Coeficiente de Jaccard:
+
+<p class="comment">
+$$
+    s(i,j)=\frac{\mid\mathcal{N}_i^{obs} \cap  \mathcal{N}_j^{obs}\mid}{\mid\mathcal{N}_i^{obs} \cup \mathcal{N}_j^{obs}\mid}
+$$
+</p>
+
+-   Coeficiente de Liben-Nowell y Kleinberg:
+
+<p class="comment">
+$$
+s(i,j)=\sum_{k\in\left(\mathcal{N}_i^{obs} \cap \mathcal{N}_j^{obs}\right)}\frac{1}{\log\mid\mathcal{N}_k^{obs} \mid}
+$$
+</p>
+
+### Ejemplo: Red de Juguete
+
+Consideremos el siguiente grafo de juguete $\mathbf{G}=(\mathbf{V},\mathbf{E})$:
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.align='center',fig.width=10,fig.height=6}
+library(sand)
+library(igraph)
+library(ROCR)
+library(dplyr)
+library(purrr)
+library(vioplot)
+library(ggplot2)
+g <- graph_from_literal(1-4,1-2, 1-3, 2-3, 2-4,4-5)
+plot(g)
+```
+
+con $V=\left\lbrace 1,2,3,4,5\right\rbrace$ y $E=\left\lbrace\lbrace1,2\rbrace,\lbrace1,3\rbrace,\lbrace1,4\rbrace,\lbrace2,3\rbrace,\lbrace2,4\rbrace,\lbrace4,5\rbrace\right\rbrace$
+
+-   Negativo de distancia geodésica:
+
+$$
+  s(1,5)=-\texttt{dist}_G^{obs}(1,5)=-2
+$$
+
+$$
+  s(1,2)=-\texttt{dist}_G^{obs}(1,2)=-1
+$$
+
+-   Comparación de las vecindades:
+
+$$
+    s(1,5)=\mid\mathcal{N}_1^{obs} \cap \mathcal{N}_5^{obs}\mid=\mid\lbrace2,3,4\rbrace\cap\lbrace4\rbrace\mid=\mid\lbrace4\rbrace\mid=1
+$$
+$$
+    s(1,2)=\mid\mathcal{N}_1^{obs} \cap \mathcal{N}_2^{obs}\mid=\mid\lbrace2,3,4\rbrace\cap\lbrace1,3,4\rbrace\mid=\mid\lbrace3,4\rbrace\mid=2
+$$
+-  Coeficiente de Jaccard:
+
+$$
+    s(1,5)=\frac{\mid\mathcal{N}_1^{obs} \cap  \mathcal{N}_5^{obs}\mid}{\mid\mathcal{N}_1^{obs} \cup \mathcal{N}_5^{obs}\mid}=\frac{\mid\lbrace2,3,4\rbrace \cap \lbrace4\rbrace\mid}{\mid\lbrace2,3,4\rbrace \cup \lbrace4\rbrace\mid}=\frac{\mid\lbrace4\rbrace\mid}{\mid\lbrace2,3,4\rbrace\mid}=\frac{1}{3}
+$$
+$$
+s(1,2)=\frac{\mid\mathcal{N}_1^{obs} \cap  \mathcal{N}_2^{obs}\mid}{\mid\mathcal{N}_1^{obs} \cup \mathcal{N}_2^{obs}\mid}=\frac{\mid\lbrace2,3,4\rbrace \cap \lbrace1,3,4\rbrace\mid}{\mid\lbrace2,3,4\rbrace \cup \lbrace1,3,4\rbrace\mid}=\frac{\mid\lbrace3,4\rbrace\mid}{\mid\lbrace1,2,3,4\rbrace\mid}=\frac{2}{4}=\frac{1}{2}
+$$
+
+-   Coeficiente de Liben-Nowell y Kleinberg:
+
+$$
+s(1,5)=\sum_{k\in\left(\mathcal{N}_1^{obs} \cap \mathcal{N}_5^{obs}\right)}\frac{1}{\log\mid\mathcal{N}_k^{obs} \mid}=\frac{1}{\log\mid\mathcal{N}_4^{obs} \mid}=\frac{1}{\log\mid\lbrace1,2,5\rbrace\mid}=\frac{1}{\log 3}
+$$
+$$
+s(1,2)=\sum_{k\in\left(\mathcal{N}_1^{obs} \cap \mathcal{N}_2^{obs}\right)}\frac{1}{\log\mid\mathcal{N}_k^{obs} \mid}=\frac{1}{\log\mid\mathcal{N}_3^{obs} \mid}+\frac{1}{\log\mid\mathcal{N}_4^{obs} \mid}=\frac{1}{\log\mid\lbrace1,2\rbrace\mid}+\frac{1}{\log\mid\lbrace1,2,5\rbrace\mid}=\frac{1}{\log 2}+\frac{1}{\log 3}
+$$
+
+### Ejemplo: Blogs de Política
+
+Red de Blogs políticos franceses. Un enlace indica que al menos uno de los dos blogs pertenecientes a una diada hace referencia al otro en su página web.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.align='center',fig.width=10,fig.height=6}
+library(sand)
+library(igraph)
+library(ROCR)
+library(dplyr)
+library(purrr)
+library(vioplot)
+library(ggplot2)
+set.seed(42)
+cols <- RColorBrewer::brewer.pal(n = 9, name = "Set1")
+party.nums <- as.numeric(as.factor(V(fblog)$PolParty))
+V(fblog)$color <- cols[party.nums]
+l<-layout_with_kk(fblog)
+plot(fblog,layout=l, vertex.label=NA, vertex.size =7.5, vertex.frame.color = "black")
+title(main = "Blogs de política")
+```
+
+
+**Librerias:**
+```{r  message=FALSE, warning=FALSE, fig.align='center',fig.width=10,fig.height=6}
+library(sand)
+library(igraph)
+library(ROCR)
+library(dplyr)
+library(purrr)
+library(vioplot)
+library(ggplot2)
+```
+
+
+
+**Número de nodos:**
+```{r}
+n <- vcount(fblog)
+n
+```
+
+**Número de posibles relaciones o diadas:**
+
+```{r}
+diadas<-n*(n-1)/2
+diadas
+```
+
+**Matriz de Adyacencia y $Vec(A_{\Delta_{inf}})$**
+
+```{r, message=FALSE, warning=FALSE}
+A <- as_adjacency_matrix(fblog)
+Avec <- A[lower.tri(A)]
+Avec %>% head(3)
+```
+
+**1. Comparación de vecindades:** 
+
+```{r}
+ncn <- numeric()
+for(i in (1:(n-1))){
+  .ni <- ego(fblog, 1, i)
+  .nj <- ego(fblog, 1, (i+1):n)
+  .nbhd.ij <- mapply(intersect, .ni, .nj, SIMPLIFY=FALSE)
+  .temp <- unlist(lapply(.nbhd.ij, length)) -2*A[i, (i+1):n]
+  ncn <- c(ncn, .temp)
+}
+ncn %>% head(3)
+```
+
+```{r}
+pred_ncn <- prediction(ncn, Avec)
+perf_ncn <- performance(pred_ncn, "auc")
+paste0('AUC=',slot(perf_ncn, "y.values"),sep='')
+```
+
+```{r,echo=FALSE, message=FALSE, warning=FALSE, fig.align='center',fig.width=10,fig.height=6}
+vioplot(ncn[Avec==0], ncn[Avec==1],names=c("No Edge", "Edge"),col=RColorBrewer::brewer.pal(n = 2, name = "Set1"))
+title(ylab="Number of Common Neighbors")
+```
+
+**2. Negativo distancia geodésica:**
+
+```{r}
+dist <- (-1)*igraph::distances(graph=fblog,v=V(fblog),to=V(fblog))
+dist <- dist[lower.tri(dist)]
+dist %>% head(3)
+```
+
+```{r}
+pred_dist <- prediction(dist, Avec)
+perf_dist  <- performance(pred_dist, "auc")
+paste0('AUC=',slot(perf_dist, "y.values"),sep='')
+```
+
+```{r,echo=FALSE,message=FALSE, warning=FALSE, fig.align='center',fig.width=10,fig.height=6}
+vioplot(dist[Avec==0], dist[Avec==1],names=c("No Edge", "Edge"),col=RColorBrewer::brewer.pal(n = 2, name = "Set2"))
+title(ylab="Negative Distances")
+```
+
+**3. Coeficiente de Jaccard**
+
+```{r}
+jac <- numeric()
+for(i in (1:(n-1))){
+  .ni <- ego(fblog, 1, i)
+  .nj <- ego(fblog, 1, (i+1):n)
+  .nbhd.ij1 <- mapply(base::intersect, .ni, .nj, SIMPLIFY=FALSE)
+  .nbhd.ij2 <- mapply(base::union, .ni, .nj, SIMPLIFY=FALSE)
+  .temp1 <- unlist(lapply(.nbhd.ij1, length)) -2*A[i, (i+1):n]
+  .temp2 <- unlist(lapply(.nbhd.ij2, length)) -2*A[i, (i+1):n]
+  jac <- c(jac, .temp1/.temp2)
+}
+jac %>% head(3)
+```
+
+
+```{r}
+pred_jac <- prediction(jac, Avec)
+perf_jac <- performance(pred_jac, "auc")
+paste0('AUC=',slot(perf_jac, "y.values"),sep='')
+```
+
+
+```{r,echo=FALSE,message=FALSE, warning=FALSE, fig.align='center',fig.width=10,fig.height=6}
+vioplot(jac[Avec==0], jac[Avec==1],names=c("No Edge", "Edge"),col=RColorBrewer::brewer.pal(n = 2, name = "Set3"))
+title(ylab="Jaccard Coefficient")
+```
+
+**4. Coeficiente de Liben-Nowell y Kleinberg:**
+
+```{r, message=FALSE, warning=FALSE}
+LNK<-numeric()
+for (i in 1:(n-1)) { 
+    ni <- ego(fblog, 1, i)
+    nj <- ego(fblog, 1, (i+1):n)
+    nbhd.ij <- mapply(base::intersect, ni, nj, SIMPLIFY = FALSE)
+    nbhd.ij2<- lapply(nbhd.ij, function(x)
+      subset(x, !x %in% c(i, i+1)))
+    prueba <- lapply(nbhd.ij2,FUN = 
+                     function(x) { apply(as.data.frame(x), MARGIN = 1,FUN = 
+                     function(y) {1 / log(length(unlist(ego(fblog, order = 1, nodes = y))) - 1)})})
+    temp<-unlist(lapply(prueba,sum))
+    LNK<-c(LNK,temp)
+}
+LNK %>% head(3)
+```
+
+
+```{r}
+pred_LNK <- prediction(LNK, Avec)
+perf_LNK <- performance(pred_LNK, "auc")
+paste0('AUC=',slot(perf_LNK, "y.values"),sep='')
+```
+
+
+```{r,echo=FALSE, message=FALSE, warning=FALSE, fig.align='center',fig.width=10,fig.height=6}
+vioplot(LNK[Avec==0], LNK[Avec==1],names=c("No Edge", "Edge"),col=c('cadetblue1','darkorchid1'))
+title(ylab="Liben-Nowell and Kleinberg Coefficient")
+```
+
+### Resumen Scores Medios
+
+```{r,echo=FALSE}
+resumen<-cbind(ncn,dist,jac,LNK,Avec) %>% as.data.frame()
+
+
+knitr::kable(resumen %>% 
+  group_by(Avec) %>% 
+  summarise_at(c(colnames(resumen)[1:4]),mean),col.names = c('Y Real','Vecinos Comúnes','Negativo Distancia Geodésica','Coeficiente Jaccard','Coeficiente Liben-Nowell y Kleinberg'))
+```
+
+### Resumen AUC
+
+```{r,echo=FALSE}
+resumen_AUC<-cbind(0.927517857323709,1,0.929047513636755,0.962521353450686) %>% as.data.frame()
+
+
+knitr::kable(resumen_AUC,col.names = c('Vecinos Comúnes','Negativo Distancia Geodésica','Coeficiente Jaccard','Coeficiente Liben-Nowell y Kleinberg'),digits = 3)
+```
+
+
+
+
+# Redes de Correlación
+
+$X$ es una variable aleatoria (continua) correspondiente a los vértices en $V$. Así,una medida de **similaridad** entre pares de vértices es
+
+<p class="comment">
+$$
+sim(i,j)=\rho_{ij}=corr({X_i,X_j})=\frac{\sigma_{ij}}{\sqrt{\sigma_{ii}\sigma_{jj}}}
+$$
+</p>
+
+Es decir, el coeficiente de *correlación de Pearson* entre $X_i$ y $X_j$ expresada en términos de las entradas de la matriz de covarianza $\Sigma = \{\sigma_{ij}\}$ del vector aleatorio $(X_1,\dots ,X_{N_v})^T$ de los atributos nodales
+
+El grafo $G= (V,E)$ asociado se denomina grafo (red) de correlación (o covarianza) y se define de forma que $\{i,j\}\in E$ si y solo si $\rho_{ij}$ es diferente de cero.
+
+Por lo tanto, para hacer inferencia sobre el grafo de asociación derivado de un conjunto de observaciones $X_i$ se debe hacer inferencia sobre el conjunto de correlaciones distintas de cero:
+
+<p class="comment">
+$$
+H_0 : \rho_{ij} = 0 {~frente~a~} H_1 : \rho_{ij} \neq 0
+$$
+</p>
+
+**Estadístico de prueba**: transformación z de Fisher sobre el coeficiente de correlación
+
+<p class="comment">
+$$
+z_{i,j}= arctanh(r_{ij})=\frac{1}{2} ~~log ~ \frac{1+r_{i,j}}{1-r_{i,j}}
+$$
+</p>
+
+donde $r$ es la versión empírica de $\rho$.
+
+**Distribución nula para la evaluación de la significancia**: si el par de variables $(X_i,X_j)$ tienen distribución normal bivariada, la densidad de $z_{ij}$ bajo la $H_0 : \rho_{ij} = 0$ está bien aproximada por una variable aleatoria $N  \left(0,\frac{1}{(n-3)}\right)$
+
+**Múltiples pruebas** : en este caso, se deben realizar un gran número de pruebas de manera simultánea para $N_v(N_v-1)/2$ (enlaces potenciales), lo cual implica que se deben ejecutar pruebas múltiples.
+
+
+## Ejemplo Red E.Coli (Libreria, SAND (R))
+
+Niveles de expresión genética en la bacteria Escherichia coli (E. coli), medidos para 153 genes en cada una de las 40 condiciones experimentales diferentes.
+
+Ecoli.expr es una matriz de 40 por 153 de niveles de expresión génica (logarítmica) en la bacteria Escherichia coli (E. coli), medidos para 153 factores de transcripción bajo cada una de las 40 condiciones experimentales diferentes, promediadas en tres réplicas de cada experimento. Los datos son un subconjunto de los publicados en RegulonDB (http://regulondb.ccg.unam.mx/). Se trata de experimentos de perturbación genética, en los que se "apaga" un gen determinado, para cada uno de los 40 genes diferentes
+
+<center>![Red E.Coli](ecoli.png){width="400"}</center>
+
+```{r, message=FALSE, warning=FALSE }
+
+g.RegDB <- graph_from_adjacency_matrix(adjmatrix=regDB.adj, mode = "undirected")
+plot(g.RegDB, vertex.label=NA, vertex.size =7.5, vertex.frame.color = "black")
+title(main = "Red E.Coli")
+```
+```{r}
+vcount(g.RegDB)
+```
+
+
+```{r}
+ecount(g.RegDB)
+```
+
+
+
+
+
+```{r, message=FALSE, warning=FALSE }
+library(sand)
+data(Ecoli.data)
+```
+
+```{r }
+r <- cor(Ecoli.expr)
+z <- 0.5 * log((1 + r) / (1 - r))
+z.vec <- z[upper.tri(z)]
+n <- dim(Ecoli.expr)[1]
+corr.pvals <-2 * pnorm(abs(z.vec), 0, sqrt(1 / (n - 3)), lower.tail = FALSE)
+```
+
+Calculados estos $valores~p$ y comparados con la distribución normal apropiada, verificamos la cantidad de pruebas simultaneas que se están realizando
+
+```{r }
+length(corr.pvals)
+```
+
+-   Para las pruebas múltiples, si las decisiones sobres las hipótesis individuales se basan en valores p marginales no ajustados, suele haber una gran probabilidad de que se rechacen algunas de las hipótesis nulas verdaderas, es decir, hay un aumento sustancial del False Discovery Rate (FDR)
+
+La función p.adjust proporciona herramientas para ajustar los $valores ~p$ para las pruebas múltiples. En este caso, se aplica el ajuste de *Benjamini-Hochberg* para controlar el FDR
+
+```{r }
+corr.pvals.adj <- p.adjust(corr.pvals, "BH")
+table(corr.pvals.adj <0.05) #luego del ajuste
+```
+
+Bajo este criterio (de correlación), estamos prediciendo 5227 enlaces que no se pudieron observar. Este numero es muy grande para ser realista y es un orden de magnitud mayor que en la red observada (el orden real es de 209)
+
+Esta prueba tiene como supuesto la normalidad bivariada ¿la normalidad se satisface?
+
+```{r, fig.align='center',fig.width=10,fig.height=6}
+car::qqPlot(z.vec)
+```
+
+```{r}
+shapiro.test(x = sample(x = z.vec, size = 5000, replace = F))
+```
+
+Tanto el QQ-Plot, como la prueba de Shapiro- Wilk, rechazan la normalidad de los scores y podría ser el porqué de los resultados con los ajustes.
+
+Ahora, si la distribución nula no es Normal, ¿entonces, cuál es? Metodología no parametrica, estudia la distribución nula en particular para coeficientes de correlación
+
+```{r, message=FALSE, warning=FALSE}
+library(fdrtool)
+
+#calculo de los valores p, de nuevo
+r.vec <- r[upper.tri(r)]
+fdr <-fdrtool(x = r.vec,statistic = "correlation",plot = F,verbose = F)
+length(fdr$qval)
+```
+
+```{r}
+head(fdr$qval) # arrojan no significativos
+```
+
+```{r}
+table(fdr$qval <0.05)
+```
+
+**CONCLUSIÓN:** Según este método, no se establece ningún enlace entre pares de genes
+
+# Redes de Correlación Parcial
+
+Dos variables aleatorias pueden estar asociadas debido al efecto conjunto de otra (u otras) variables aleatorias de control eliminadas: La correlación parcial mide este tipo de asociación
+
+Usar el coeficiente de correlación directamente sobre las dos variables de interés puede arrojar resultados engañosos si existe otra variable de **confusión** que esta relacionada con ambas variables.
+
+Dos vértices $i$ y $j$ pueden tener atributos altamente correlacionados, $X_i$ y $X_j$ porque los vértices influyen entre sí de manera directa. Alternativamente, esta correlación puede ser alta, posiblemente, porque cada uno de ellos está fuertemente relacionado con un tercer vértice k. Por lo tanto $X_i$ y $X_j$ están altamente correlacionados con $X_k$
+
+La correlación parcial de los atributos $X_i$ y $X_j$ de los vértices $i,j \in V$ definida con respecto a los atributos $X_{k_1},\dots, X_{k_m}$ de los vértices $k_1,\dots;k_m \in V$, es la correlación entre $X_i$ y $X_j$ que queda después de descontar el efecto de $X_{k_1},\dots, X_{k_m}$ común a $X_i$ y $X_j$
+
+-   Cuando $m=0$, el coef de correlación parcial se reduce al coeficiente de correlación de Pearson ordinario
+
+-   Cuando $m=1$ el coeficiente de correlación parcial se puede calcular como
+
+<p class="comment">
+$$
+\rho_{i,j|k} = \frac{\rho_{i,j}-\rho_{i,k}\rho_{j,k}}{\sqrt{(1-\rho_{i,k}^2)(1-\rho_{j,k}^2)}}
+$$
+</p>
+
+Para definir los enlaces del grafo inducido por la correlación parcial (dado un valor de $m$), se procede de manera análoga que con el grafo de correlación de Pearson, pero reemplazando $\rho_{ij}$ por $\rho_{i,j|k}$ (cuando $m=1$)
+
+El grafo $G=(V,E)$ correspondiente se denomina grafo (red) de correlación parcial y se define de forma que $\{i,j\} \in E$ si y solo si $\rho_{i,j|k}$ es diferente de cero para todo $S_m \in V^{(m)}_{-(i,j)}$. Donde $S_m = \{k_1,\dots,k_m\}$ y $V^{(m)}_{-(i,j)}$ es la colección de todos los subconjuntos no ordenados de $m$ vértices (distintos)
+
+Por lo tanto, dado un conjunto de observaciones de cada $X_i$, para hacer inferencia sobre el grafo de correlación parcial se debe hacer inferencia sobre el conjunto de correlaciones distintas de cero:
+
+<p class="comment">
+$$ H_0: \rho_{i,j|k} = 0 ~ para~ algún~ S_m \in V^{(m)}_{-(i,j)} ~~ frente~a ~~ H_0: \rho_{i,j|k} \neq  0 ~ para~ todo~ S_m \in V^{(m)}_{-(i,j)}
+$$
+</p>
+
+**Estadístico de prueba**: transformación $z$ de Fisher sobre el coeficiente de correlación
+
+<p class="comment">
+$$
+z_{i,j}= arctanh(r_{ij})=\frac{1}{2} ~~log ~ \frac{1+r_{i,j|S_m}}{1-r_{i,j|S_m}}
+$$
+</p>
+
+donde $r{i,j|S_m}$ es la versión empírica de $\rho_{i,j|S_m}$.
+
+**Distribución nula para la evaluación de la significancia**:bajo el supuesto de normalidad multivariada de $(X_i,\dots,X_j)$ el estadistico de prueba sigue una distribución $N  \left(0,\frac{1}{(n-m-3)}\right)$
+
+@wille propone construir una prueba a partir de pruebas de los sub-problemas a través de la agregación:
+
+<p class="comment">
+$$
+p_{ij,max}= max\{p_{i,j|S_m} : S_m \in V^{(m)}_{-(i,j)}\}
+$$
+</p>
+
+```{r}
+#Tamaño de la muestra
+n <- nrow(Ecoli.expr)
+n
+```
+
+```{r}
+#n de vertices
+N <- ncol(Ecoli.expr)
+N
+```
+
+Agregación
+
+```{r}
+#correlaciones agregadas y obteniendo el max
+m <- 1
+pcorr.pvals <- matrix(0, N, N)
+for (i in 1:N) {
+  for (j in 1:N) {
+    rowi <- r[i,-c(i, j)]
+    rowj <- r[j,-c(i, j)]
+    tmp <- (r[i, j] - rowi * rowj) / sqrt((1 - rowi^2) * (1 - rowj^2)) #correlaciones parciales
+    tmp.zvals <-(0.5) * log((1 + tmp) / (1 - tmp)) #estadístico de prueba
+    tmp.pvals <-2 * pnorm(abs(tmp.zvals),mean = 0,sd = 1 / sqrt(n - m - 3),lower.tail = FALSE)
+    pcorr.pvals[i, j] <-max(tmp.pvals)
+  }
+}
+
+# valores p ajustados (pruebas multiples)
+
+pcorr.pvals.vec <- pcorr.pvals[lower.tri(pcorr.pvals)]
+pcorr.pvals.adj <- p.adjust(pcorr.pvals.vec, "BH")
+
+# relaciones significativas
+
+pcorr.edges <- (pcorr.pvals.adj < 0.05)
+table(pcorr.edges)
+
+```
+
+```{r}
+fdr <-fdrtool(pcorr.pvals.vec,statistic = "pvalue",plot = FALSE,verbose = F)
+pcorr.edges.2 <- (fdr$qval < 0.05)
+table(pcorr.edges.2)
+```
+
+Verificamos que sean las mismas conexiones
+
+```{r}
+identical(pcorr.edges,pcorr.edges.2)
+```
+
+Comprobamos con el grafo observado
+
+```{r}
+#grafo inducido
+pcorr.A <- matrix(0,N,N)
+pcorr.A[lower.tri(pcorr.A)] <- as.numeric(pcorr.pvals.adj < 0.05)
+pcorr.A <- pcorr.A + t(pcorr.A)
+
+#comparacion con grafo observado
+table(regDB.adj[lower.tri(regDB.adj)],pcorr.A[lower.tri(pcorr.A)])
+```
+
+Hay 4 conexiones compartidas, 21 falsos positivos y 89 falsos negativos. Son pocas conexiones en común con el grafo original: esta topologia inducida está basada en las propiedades de los genes (atributos) y con correlacion parcial de orden $m=1$
+
+# Modelo gaussiano 
+
+Se denomina modelo gaussiano a un caso particular del método de correlación parcial en el que **m = n-2**, y los atributos siguen una distribución normal multivariada. En este modelo, la correlación parcial entre los atributos de dos vértices es condicional a la información de los atributos de los demás vértices . Por lo tanto, para $G = (V, E)$ se tiene que:
+
+* $\rho_{i j \mid V \backslash\{i, j\}} = 0$ si y solo si $X_{i}$ y $X_{j}$ son condicionalmente independientes.
+* $(i, j) \in E ~ \text{si} ~\rho_{i j \mid V \backslash\{i, j\}} \neq 0$
+
+En este modelo, los coeficientes de correlación parcial pueden expresarse como:
+
+<p class="comment">
+$$
+\rho_{i j \mid V \backslash\{i, j\rangle}=\frac{-\omega_{i j}}{\sqrt{\omega_{i i} \omega_{j j}}},
+$$</p>
+
+donde $\omega_{i j}$ es la entrada $(i, j)$ de $\Omega=\Sigma^{-1}$, la inversa de la matriz de covarianza $\Sigma$ del vector $\left(X_1, \ldots, X_{N_y}\right)^T$ también conocida como *matriz de precisión*.
+
+El sistema de hipótesis a probar es el siguiente:
+<p class="comment">
+$$
+H_0: \rho_{i j \mid V \backslash[i, j\}}=0 ~~\text { vs }~~ H_1: \rho_{i j \mid V \backslash\{i, j\}} \neq 0
+$$
+</p>
+
+teniendo en cuenta las correlaciones parciales empíricas $\hat{\rho}_{i j \mid V \backslash\{i, j\rangle}$. Sin embargo para redes extensas, suele considerarse la relación entre la correlación y la regresión lineal para probar la hipótesis anterior.
+
+Consideremos el vector aleatorio $\left(X_1, \ldots, X_{N_v}\right)^T$ de los atributos de los vértices que tiene una distribución normal multivariada con media $\mathbf{0}$, y matriz de covarianzas $\Sigma$, por lo tanto el vector de atributos $X_{i}$ dado los valores de los atributos de los demás vértices tiene la siguiente esperanza condicional:
+
+<p class="comment">
+$$\mathbb{E}\left[X_i \mid \mathbf{X}^{(-i)}=\mathbf{x}^{(-i)}\right]=\left(\beta^{(-i)}\right)^T \mathbf{x}^{(-i)}
+$$</p>
+
+donde
+
+* $\mathbf{x}^{(-i)} = \left(X_1, \ldots, X_{i-1}, X_{i+1}, \ldots, X_{N_v}\right)^T$
+
+* $\beta^{(-i)}$ es un vector de parámetros $\left(N_v-1\right)$, y cada entrada $j$ puede ser expresada como ´$\beta_j^{(-i)}=-\omega_{i j} / \omega_{i i}$.
+
+De acuerdo a lo anterior, $(i, j) \in E$ si y solo si  $\beta_i^{(-i)}$ es diferente de 0. Estos coeficientes se estiman con métodos basados en regresión y selección de variables.
+
+Sin embargo como hay $N_v-1$ variables en la regresión por cada $X_i$, y además $n \ll N_v$, se ha propuesto la estimación de una regresión *lasso* de tal manera que :
+
+<p class="comment">
+$$
+\hat{\beta}^{(-i)}=\arg \min _{\beta: \beta_i=0} \sum_{k=1}^n\left(x_{i k}-\left(\beta^{(-i)}\right)^T \mathbf{x}_k^{(-i)}\right)^2+\lambda \sum_{j \neq i}\left|\beta_j^{(-i)}\right| .
+$$
+</p>
+Esta estrategia no solo estima los coeficientes $\beta^{(-i)}$, sino que asegura que $\hat{\beta}_j^{(-i)}=0$  cuando la asociación de $X_i$ y $X_j$ es muy débil respecto a la elección del parámetro $\lambda$.
+
+Para que lo anterior pueda ponerse en práctica se debe:
+
+* Evaluar la normalidad multivariada.
+* Escoger el parámetro $\lambda$
+
+El parquete **huge** permite abordar estos  dos puntos.
+
+```{r data_ecoli, message=FALSE, warning=FALSE}
+
+# Librería huge para high-dimensional, undirected graph estimation
+library(huge)
+library(sand)
+data(Ecoli.data)
+
+```
+```{r huge_objecttitulo, message=FALSE, warning=FALSE}
+
+set.seed(42)
+huge.out = huge(Ecoli.expr)
+```
+
+```{r huge_plot, message=FALSE, warning=FALSE,fig.width=12, fig.height=8}
+plot(huge.out)
+```
+
+
+```{r lambda_ric, message=FALSE, warning=FALSE}
+set.seed(42)
+
+# rotational information criterion
+huge.opt = huge.select(huge.out, criterion="ric")
+g.huge = graph_from_adjacency_matrix(huge.opt$refit, "undirected")
+huge.opt[["opt.lambda"]]
+```
+
+```{r lambda_ric_count, message=FALSE, warning=FALSE}
+ecount(g.huge)
+```
+
+```{r lambda_star, message=FALSE, warning=FALSE, results='hide'}
+set.seed(42)
+
+# stability selection
+huge.opt = huge.select(huge.out, criterion="stars")
+g.huge = graph_from_adjacency_matrix(huge.opt$refit, "undirected")
+```
+
+```{r lambda_star_print, message=FALSE, warning=FALSE, results='hide'}
+huge.opt[["opt.lambda"]]
+```
+
+```{r lambda_star_count, message=FALSE, warning=FALSE}
+ecount(g.huge)
+```
+
+```{r interseccion_grafo_original, message=FALSE, warning=FALSE}
+
+# Intersección entre el grafo obtenido y el grafo real
+g.regDB = graph_from_adjacency_matrix(regDB.adj,"undirected")
+intersection(g.regDB, g.huge, byname=FALSE)
+```
+
+# Inferencia tomográfica de la topología de una red
+
+La inferencia tomográfica se refiere a la inferencia de los componentes **interiores** de una red (tanto aristas como vértices), a partir de los datos obtenido de los vértices **exteriores**.
+
+Este problema de inferencia no es fácil, pues sin el número de vértices y aristas internos, ni su forma de conexión, los vértices exteriores pueden generarse de infinitas topologías. Por este motivo, para inferir es necesario hacer suposiciones sobre la estructura interna de la red, la suposición más usual es restringir a la inferencia de redes en forma de árboles.
+
+
+## Topología de árboles
+
+Se denomina un árbol (no dirigido) $T=\left(V_T, E_T\right)$ a un grafo conectado sin ciclos
+
+<center>![](grafo_arbol.png){width=60%}</center>
+
+* Un árbol rotado es un árbol con un vértice $r \in V_T$ que funciona como **raíz** del árbol. 
+* El conjunto de vértices $R \subset V_T$ de 1 grado se conocen como **hojas**. 
+* Los vértices tal que $V \backslash\{\{r\} \cup R\}$ se denominan **vértices internos**.
+* Las aristas $E_T$ se conocen como **ramas**.
+
+## Árbol binario
+
+Un árbol binario es un árbol rotado que en dirección de la raíz a las hojas, cada vértice interno tiene máximo 2 hijos. 
+
+Para un grafo arbitrario $G=(V, E)$, suponga un subconjunto de vértices $N_l$ con $n$ observaciones independientes e idénticamente distribuidas de variables aleatorias $\left\{X_1, \ldots, X_{N_l}\right\}$. Bajo el supuesto de que estos vértices pueden ser identificados con las hojas $R$ de un árbol $T$, se quiere encontrar $\hat{T}$ en el conjunto  $\mathscr{T}_{N_l}$ de todos los árboles binarios con $N_l$ hojas que mejor explique los datos. Si se tiene conocimiento de la raíz del árbol $r$, entonces las raíces de los árboles en $\mathscr{T}_{N_l}$ pueden ser identificados con r.
+
+## Red informática
+
+Consideremos la siguiente topología de una red de computadores (Experimento @castro_infor)
+
+<center>![](red_informatica.png){width=60%}</center>
+
+@coates propone un esquema de medición denominado **sándwich sondeo**. Este consiste en enviar una secuencia de tres señales (dos pequeñas y una grande). Las dos señales pequeñas se envían a uno de los vértices de un par de hojas $\{i, j\}$, mientras que la señal grande se envía al vértice restante. El primer envío es el de una señal pequeña, el segundo es de la grande que induce un retraso en la llegada de la tercera señal (pequeña) y la diferencia de llegada de las señales pequeñas reflejan cuantos caminos se comparten entre el vértice $i$ y el $j$.
+ 
+
+Los datos de este experimento son los siguientes:
+
+```{r sandwich_data, message=FALSE, warning=FALSE}
+# DelayDiff: Diferencia en microsegundos entre los paquetes pequeños.
+# SmallPktDest: Vértice de llegada del paquete pequeño
+# BigPktDest: Vértice de llegada del paquete grande.
+data(sandwichprobe)
+delaydata[1:5, ]
+
+```
+
+```{r host_names, message=FALSE, warning=FALSE}
+# Nombres de las máquinas
+host.locs
+```
+
+```{r heatmap_mean_diff, message=FALSE, warning=FALSE, fig.width=6, fig.height=6,fig.align='center'}
+meanmat = with(delaydata, by(DelayDiff, delaydata[, 2:3], mean))
+
+image(log(meanmat + t(meanmat)), xaxt="n", yaxt="n", col=heat.colors(16))
+
+mtext(side=1, text=host.locs, at=seq(0.0,1.0,0.11), las=3)
+
+mtext(side=2, text=host.locs, at=seq(0.0,1.0,0.11), las=1)
+```
+
+
+## Métodos de inferencia en topologías de árboles
+
+Los dos métodos más desarrollados son:
+
+1. Agrupamiento jerárquico.
+2. Métodos basados en verosimilitud.
+
+
+En el agrupamiento jerárquico, se considera el conjunto de $N_l$ hojas como los objetos a agrupar de acuerdo a una noción de similitud, el árbol resultante de este método es el árbol correspondiente al árbol inferido. En este contexto, se utilizan las $n$ observaciones de las variables aleatorias  $\left\{X_1, \ldots, X_{N_l}\right\}$ en las hojas que permiten construir una matriz $N_l \times N_l$ de similitudes.
+
+```{r distancia_euclididana, message=FALSE, warning=FALSE}
+# Distancia euclidiana entre los retrasos de tiempo
+SSDelayDiff = with(delaydata, by(DelayDiff^2, delaydata[,2:3], sum))
+```
+
+```{r x_distancia, message=FALSE, warning=FALSE}
+x = as.dist(1 / sqrt(SSDelayDiff))
+x
+```
+
+```{r cluster,fig.align='center',message=FALSE, warning=FALSE}
+myclust = hclust(x, method="average")
+plot(myclust, labels=host.locs, axes=FALSE, ylab=NULL, ann=FALSE)
+```
+
+# Referencias
